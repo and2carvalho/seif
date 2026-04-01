@@ -18,17 +18,21 @@ import json
 import sys
 from pathlib import Path
 
-from seif.identity_block import (
-    create_identity_block,
-    create_fallback_block,
-    generate_watermark_token,
-    validate_commitment,
-    parse_identity_block,
-    validate_block_file,
-    merge_trail_blocks,
-    generate_trail_token,
-    IdentityMethod
-)
+try:
+    from seif.identity_block import (
+        create_identity_block,
+        create_fallback_block,
+        generate_watermark_token,
+        validate_commitment,
+        parse_identity_block,
+        validate_block_file,
+        merge_trail_blocks,
+        generate_trail_token,
+        IdentityMethod
+    )
+    _IDENTITY_AVAILABLE = True
+except ImportError:
+    _IDENTITY_AVAILABLE = False
 
 
 def cmd_identity_declare(args):
@@ -199,6 +203,10 @@ def cmd_identity_merge(args):
 
 
 def main():
+    if not _IDENTITY_AVAILABLE:
+        print("This feature requires seif-engine. Install: pip install seif-engine")
+        return
+
     parser = argparse.ArgumentParser(
         description="SEIF Identity Declaration Block v3.1",
         formatter_class=argparse.RawDescriptionHelpFormatter

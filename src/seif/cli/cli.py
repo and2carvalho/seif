@@ -103,7 +103,11 @@ def cmd_fingerprint_update(filepath: str, output: str):
 def cmd_compress(project_path: str, watch: bool = False,
                  context_repo: str = None, author: str = "code-compressor"):
     """Compress a source code project into .seif for AI consumption."""
-    from seif.context.code_compressor import compress_project, watch_project
+    try:
+        from seif.context.code_compressor import compress_project, watch_project
+    except ImportError:
+        print("This feature requires seif-engine. Install: pip install seif-engine")
+        return
 
     target = None
     if context_repo:
@@ -130,10 +134,14 @@ def cmd_compress(project_path: str, watch: bool = False,
 
 
 def cmd_autonomous(action: str, context_repo: str = None):
-    from seif.context.autonomous import (
-        load_config, save_config, is_autonomous, load_mapper,
-        find_context_repo, CATEGORIES, DEFAULT_CONFIG,
-    )
+    try:
+        from seif.context.autonomous import (
+            load_config, save_config, is_autonomous, load_mapper,
+            find_context_repo, CATEGORIES, DEFAULT_CONFIG,
+        )
+    except ImportError:
+        print("This feature requires seif-engine. Install: pip install seif-engine")
+        return
 
     # Auto-discover context repo if not specified
     if not context_repo:
@@ -202,7 +210,11 @@ def cmd_autonomous(action: str, context_repo: str = None):
 def cmd_relay(module_paths: list[str], backend: str, prompt: str, output: str):
     """Send .seif module(s) to an AI backend and get its interpretation."""
     import json
-    from seif.bridge.ai_bridge import send, detect_backends
+    try:
+        from seif.bridge.ai_bridge import send, detect_backends
+    except ImportError:
+        print("This feature requires seif-engine. Install: pip install seif-engine")
+        return
 
     # Map short names to ai_bridge backend names
     backend_map = {
@@ -272,10 +284,14 @@ def cmd_packet(module_path: str, message: str, sender: str, receiver: str,
                classification: str, output: str, send: bool):
     """Create and optionally send a SEIF-PACKET-v1."""
     import json
-    from seif.bridge.seif_packet import (
-        create_packet, verify_packet, send_packet, save_packet,
-        describe_packet, packet_to_dict,
-    )
+    try:
+        from seif.bridge.seif_packet import (
+            create_packet, verify_packet, send_packet, save_packet,
+            describe_packet, packet_to_dict,
+        )
+    except ImportError:
+        print("This feature requires seif-engine. Install: pip install seif-engine")
+        return
 
     # Load module if provided
     module = None
@@ -449,7 +465,11 @@ def cmd_consensus(question: str, module_paths: list[str], backends: list[str],
     """
     import json
     from datetime import datetime, timezone
-    from seif.bridge.ai_bridge import send, send_clean, detect_backends
+    try:
+        from seif.bridge.ai_bridge import send, send_clean, detect_backends
+    except ImportError:
+        print("This feature requires seif-engine. Install: pip install seif-engine")
+        return
     from seif.analysis.quality_gate import assess
 
     # Map short names
@@ -706,9 +726,13 @@ def cmd_consensus(question: str, module_paths: list[str], backends: list[str],
 
 
 def cmd_export(context_repo: str, classification: str, output: str):
-    from seif.context.autonomous import (
-        load_mapper, bootstrap_context, find_context_repo, CLASSIFICATION_LEVELS,
-    )
+    try:
+        from seif.context.autonomous import (
+            load_mapper, bootstrap_context, find_context_repo, CLASSIFICATION_LEVELS,
+        )
+    except ImportError:
+        print("This feature requires seif-engine. Install: pip install seif-engine")
+        return
 
     # Auto-discover context repo if not specified
     if not context_repo:
@@ -741,7 +765,11 @@ def cmd_export(context_repo: str, classification: str, output: str):
 
 
 def cmd_install_hooks(repo_path: str):
-    from seif.context.git_hooks import install_hooks, check_hooks
+    try:
+        from seif.context.git_hooks import install_hooks, check_hooks
+    except ImportError:
+        print("This feature requires seif-engine. Install: pip install seif-engine")
+        return
     installed = install_hooks(repo_path)
     if installed:
         print("Git hooks installed:")
@@ -753,9 +781,13 @@ def cmd_install_hooks(repo_path: str):
 
 
 def cmd_init(root_path: str, author: str, context_repo: str = None):
-    from seif.context.workspace import discover_projects, sync_workspace, describe_workspace
-    from seif.context.git_context import sync_project, extract_git_context
-    from seif.context.git_hooks import install_hooks
+    try:
+        from seif.context.workspace import discover_projects, sync_workspace, describe_workspace
+        from seif.context.git_context import sync_project, extract_git_context
+        from seif.context.git_hooks import install_hooks
+    except ImportError:
+        print("This feature requires seif-engine. Install: pip install seif-engine")
+        return
     from pathlib import Path
 
     root = Path(root_path).resolve()
@@ -874,9 +906,13 @@ def cmd_init(root_path: str, author: str, context_repo: str = None):
 def cmd_workspace(workspace_root: str, ingest_source: str = None,
                    author: str = "workspace", via: str = "sync",
                    context_repo: str = None):
-    from seif.context.workspace import (
-        sync_workspace, describe_workspace, ingest_to_workspace,
-    )
+    try:
+        from seif.context.workspace import (
+            sync_workspace, describe_workspace, ingest_to_workspace,
+        )
+    except ImportError:
+        print("This feature requires seif-engine. Install: pip install seif-engine")
+        return
 
     if ingest_source:
         # Route ingested text to all projects in workspace
@@ -904,7 +940,11 @@ def cmd_workspace(workspace_root: str, ingest_source: str = None,
 
 
 def cmd_ingest(source: str, project_path: str, author: str, via: str):
-    from seif.context.ingest import ingest, describe_ingest
+    try:
+        from seif.context.ingest import ingest, describe_ingest
+    except ImportError:
+        print("This feature requires seif-engine. Install: pip install seif-engine")
+        return
     result = ingest(source, project_path, author=author, via=via)
     print(describe_ingest(result))
 
@@ -914,23 +954,27 @@ def cmd_quality_gate(text: str, role: str):
         from seif.analysis.quality_gate import assess, describe_verdict
         verdict = assess(text, role=role)
         print(describe_verdict(verdict))
-        except ImportError:
-            # Minimal: stance-only (protocol public)
-            from seif.analysis.stance_detector import analyze
-            result = analyze(text)
-            icon = {"GROUNDED": "🟢", "MIXED": "🟡", "DRIFT": "🔴"}.get(result.label, "⚪")
-            print(f"{icon} [{role.upper()}] Stance: {result.label} | "
-                  f"Verifiable: {result.verifiable_ratio:.0%} "
-                  f"({result.verifiable_count}/{result.total_sentences} sentences)")
-            if result.flagged_sentences:
-                print(f"\n  Flagged:")
-                for s in result.flagged_sentences[:3]:
-                    print(f"    - {s}")
-            print(f"\n  Install seif-engine for full quality gate (grades A-F, hedging, resonance)")
+    except ImportError:
+        # Minimal: stance-only (protocol public)
+        from seif.analysis.stance_detector import analyze
+        result = analyze(text)
+        icon = {"GROUNDED": "🟢", "MIXED": "🟡", "DRIFT": "🔴"}.get(result.label, "⚪")
+        print(f"{icon} [{role.upper()}] Stance: {result.label} | "
+              f"Verifiable: {result.verifiable_ratio:.0%} "
+              f"({result.verifiable_count}/{result.total_sentences} sentences)")
+        if result.flagged_sentences:
+            print(f"\n  Flagged:")
+            for s in result.flagged_sentences[:3]:
+                print(f"    - {s}")
+        print(f"\n  Install seif-engine for full quality gate (grades A-F, hedging, resonance)")
 
 
 def cmd_sync(repo_path: str, author: str, via: str, context_repo: str = None):
-    from seif.context.git_context import sync_project, extract_git_context
+    try:
+        from seif.context.git_context import sync_project, extract_git_context
+    except ImportError:
+        print("This feature requires seif-engine. Install: pip install seif-engine")
+        return
     ctx = extract_git_context(repo_path)
     print(f"Repository:    {ctx.repo_name}")
     print(f"Branch:        {ctx.branch}")
@@ -988,7 +1032,11 @@ def cmd_sync(repo_path: str, author: str, via: str, context_repo: str = None):
 
 
 def cmd_contribute(module_path: str, text: str, author: str, via: str):
-    from seif.context.context_manager import contribute_to_module
+    try:
+        from seif.context.context_manager import contribute_to_module
+    except ImportError:
+        print("This feature requires seif-engine. Install: pip install seif-engine")
+        return
     module, path = contribute_to_module(module_path, text, author, via)
     print(f"Contributed to: {path}")
     print(f"  Version:      {module.version}")
@@ -1036,7 +1084,11 @@ def cmd_handshake(model: str, full: bool = False):
     """
     import json
     from pathlib import Path
-    from seif.context.context_manager import build_startup_context
+    try:
+        from seif.context.context_manager import build_startup_context
+    except ImportError:
+        print("This feature requires seif-engine. Install: pip install seif-engine")
+        return
 
     model = model.lower().strip()
 
@@ -1270,13 +1322,17 @@ def cmd_consult(question: str, context_paths: list[str],
     The protocol measures the response and optionally persists it.
     """
     import json
-    from seif.bridge.ai_bridge import (
-        send, detect_backends, build_safe_context, AIResponse,
-    )
-    from seif.bridge.ai_registry import (
-        recommend_backends, recommend_any, describe_recommendation,
-        build_optimized_prompt, AI_REGISTRY, PROMPT_STYLES,
-    )
+    try:
+        from seif.bridge.ai_bridge import (
+            send, detect_backends, build_safe_context, AIResponse,
+        )
+        from seif.bridge.ai_registry import (
+            recommend_backends, recommend_any, describe_recommendation,
+            build_optimized_prompt, AI_REGISTRY, PROMPT_STYLES,
+        )
+    except ImportError:
+        print("This feature requires seif-engine. Install: pip install seif-engine")
+        return
     from seif.analysis.quality_gate import assess
 
     backend_map = {
@@ -1503,8 +1559,12 @@ def cmd_consult(question: str, context_paths: list[str],
 def cmd_generate(output_dir: str, context_repo: str = None,
                  classification: str = "INTERNAL"):
     """Generate documentation from .seif context modules."""
-    from seif.context.doc_generator import generate_docs
-    from seif.context.autonomous import find_context_repo
+    try:
+        from seif.context.doc_generator import generate_docs
+        from seif.context.autonomous import find_context_repo
+    except ImportError:
+        print("This feature requires seif-engine. Install: pip install seif-engine")
+        return
 
     ctx = context_repo or find_context_repo() or ".seif"
     if not Path(ctx).exists():
@@ -1525,8 +1585,12 @@ def cmd_generate(output_dir: str, context_repo: str = None,
 
 def cmd_changelog(output: str, context_repo: str = None):
     """Generate CHANGELOG.md from decisions.seif."""
-    from seif.context.doc_generator import generate_changelog
-    from seif.context.autonomous import find_context_repo
+    try:
+        from seif.context.doc_generator import generate_changelog
+        from seif.context.autonomous import find_context_repo
+    except ImportError:
+        print("This feature requires seif-engine. Install: pip install seif-engine")
+        return
 
     ctx = context_repo or find_context_repo() or ".seif"
     if not Path(ctx).exists():
@@ -1543,7 +1607,11 @@ def cmd_changelog(output: str, context_repo: str = None):
 def cmd_scan(program: str, global_store: bool = False,
              max_depth: int = 2, output: str = None):
     """Scan a CLI program's --help and generate a .seif knowledge module."""
-    from seif.context.cli_scanner import scan_program, capture_help
+    try:
+        from seif.context.cli_scanner import scan_program, capture_help
+    except ImportError:
+        print("This feature requires seif-engine. Install: pip install seif-engine")
+        return
 
     # Quick check: can we run the program?
     help_text = capture_help(program)
@@ -1637,12 +1705,16 @@ def cmd_adversarial(question: str, context_paths: list[str],
     import json
     import difflib
     from datetime import datetime, timezone
-    from seif.bridge.ai_bridge import (
-        send, send_clean, detect_backends, AIResponse,
-    )
-    from seif.bridge.ai_registry import (
-        recommend_backends, describe_recommendation,
-    )
+    try:
+        from seif.bridge.ai_bridge import (
+            send, send_clean, detect_backends, AIResponse,
+        )
+        from seif.bridge.ai_registry import (
+            recommend_backends, describe_recommendation,
+        )
+    except ImportError:
+        print("This feature requires seif-engine. Install: pip install seif-engine")
+        return
     from seif.analysis.quality_gate import assess
 
     backend_map = {
@@ -1871,7 +1943,11 @@ def cmd_streaming_start(
 ):
     """Start a streaming watermark session."""
     from seif.generators.streaming_watermark import StreamingWatermarker
-    from seif.identity_block import parse_identity_block
+    try:
+        from seif.identity_block import parse_identity_block
+    except ImportError:
+        print("This feature requires seif-engine. Install: pip install seif-engine")
+        return
     import json
 
     identity_block = None
@@ -1976,9 +2052,13 @@ def cmd_boot_check(
     all_backends: bool
 ):
     """Run boot check across multiple LLMs in parallel."""
-    from seif.bridge.boot_check import (
-        run_boot_check, describe_result, auto_detect_backends
-    )
+    try:
+        from seif.bridge.boot_check import (
+            run_boot_check, describe_result, auto_detect_backends
+        )
+    except ImportError:
+        print("This feature requires seif-engine. Install: pip install seif-engine")
+        return
 
     if not backends and not auto and not all_backends:
         print("Error: specify --boot-to backends, --boot-auto, or --boot-all")
@@ -2013,7 +2093,11 @@ def cmd_boot_check(
 
 def cmd_security(args):
     """Run security assessment (Red/Blue team)."""
-    from seif.context.autonomous import find_context_repo
+    try:
+        from seif.context.autonomous import find_context_repo
+    except ImportError:
+        print("This feature requires seif-engine. Install: pip install seif-engine")
+        return
     ctx = args.context_repo or find_context_repo() or ".seif"
     action = args.security
 
@@ -2034,10 +2118,18 @@ def cmd_security(args):
             print(f"No security_baseline.seif found at {bp}")
         return
 
-    from seif.bridge.local_proxy import classify_input
+    try:
+        from seif.bridge.local_proxy import classify_input
+    except ImportError:
+        print("This feature requires seif-engine. Install: pip install seif-engine")
+        return
 
     if action == "red":
-        from seif.security.redblue import red_team_test
+        try:
+            from seif.security.redblue import red_team_test
+        except ImportError:
+            print("This feature requires seif-engine. Install: pip install seif-engine")
+            return
         print("═══ SEIF RED TEAM ═══\n")
         report = red_team_test(classify_input)
         print(f"  Tests:           {report.total_tests}")
@@ -2057,7 +2149,11 @@ def cmd_security(args):
         return
 
     if action == "blue":
-        from seif.security.redblue import blue_team_audit
+        try:
+            from seif.security.redblue import blue_team_audit
+        except ImportError:
+            print("This feature requires seif-engine. Install: pip install seif-engine")
+            return
         print("═══ SEIF BLUE TEAM ═══\n")
         audit = blue_team_audit(ctx)
         print(f"  Modules audited:     {audit.modules_audited}")
@@ -2074,7 +2170,11 @@ def cmd_security(args):
         return
 
     # Default: full score
-    from seif.security.redblue import run_full_assessment
+    try:
+        from seif.security.redblue import run_full_assessment
+    except ImportError:
+        print("This feature requires seif-engine. Install: pip install seif-engine")
+        return
     print("═══ SEIF SECURITY ASSESSMENT ═══\n")
     score = run_full_assessment(classify_input, ctx, persist=True)
     print(f"  Red Team:        {score.red_grade} (bypass: {score.red_bypass_rate:.1%})")
@@ -2093,7 +2193,11 @@ def cmd_security(args):
 
 def cmd_proxy(args):
     """Manage the local LLM proxy (data sovereignty layer)."""
-    from seif.bridge.local_proxy import status, classify_input, _ollama_pull
+    try:
+        from seif.bridge.local_proxy import status, classify_input, _ollama_pull
+    except ImportError:
+        print("This feature requires seif-engine. Install: pip install seif-engine")
+        return
 
     if args.proxy_test:
         # Test classification of specific text
@@ -2156,7 +2260,11 @@ def cmd_proxy(args):
 
 def cmd_dia_skill():
     """Generate Dia browser skill prompt from current nucleus context."""
-    from seif.context.nucleus import load_profile, load_sources
+    try:
+        from seif.context.nucleus import load_profile, load_sources
+    except ImportError:
+        print("This feature requires seif-engine. Install: pip install seif-engine")
+        return
     from seif.data.paths import get_user_home
     import json
 
@@ -2345,7 +2453,11 @@ def cmd_sign_all(directory: str):
 def cmd_profile(args):
     """Manage ~/.seif/profile.json."""
     import json
-    from seif.context.nucleus import load_profile, init_profile
+    try:
+        from seif.context.nucleus import load_profile, init_profile
+    except ImportError:
+        print("This feature requires seif-engine. Install: pip install seif-engine")
+        return
 
     action = args.profile
     if action == "show":
@@ -2375,9 +2487,13 @@ def cmd_profile(args):
 
 def cmd_sources(args):
     """Manage ~/.seif/sources.json."""
-    from seif.context.nucleus import (
-        load_sources, add_source, remove_source, sync_all_sources, load_profile
-    )
+    try:
+        from seif.context.nucleus import (
+            load_sources, add_source, remove_source, sync_all_sources, load_profile
+        )
+    except ImportError:
+        print("This feature requires seif-engine. Install: pip install seif-engine")
+        return
 
     action = args.sources
     if action == "list":
@@ -2421,8 +2537,12 @@ def cmd_sources(args):
 def cmd_extract(path: str, context_repo: str = None,
                 classification: str = "INTERNAL"):
     """Extract knowledge from files/directories into .seif modules."""
-    from seif.context.file_extractor import scan_directory, build_extract_module
-    from seif.context.autonomous import find_context_repo
+    try:
+        from seif.context.file_extractor import scan_directory, build_extract_module
+        from seif.context.autonomous import find_context_repo
+    except ImportError:
+        print("This feature requires seif-engine. Install: pip install seif-engine")
+        return
 
     target = Path(path).resolve()
     if not target.exists():
@@ -2766,10 +2886,14 @@ def main():
         return
 
     if args.models:
-        from seif.bridge.model_tracker import (
-            describe_profiles, update_all_profiles,
-            list_behavior_types, record_behavioral_observation,
-        )
+        try:
+            from seif.bridge.model_tracker import (
+                describe_profiles, update_all_profiles,
+                list_behavior_types, record_behavioral_observation,
+            )
+        except ImportError:
+            print("This feature requires seif-engine. Install: pip install seif-engine")
+            return
         if args.models == "update":
             results = update_all_profiles()
             for r in results:
@@ -2808,8 +2932,12 @@ def main():
         return
 
     if args.health:
-        from seif.bridge.ai_bridge import detect_backends
-        from seif.bridge.backend_health import describe_health, load_health, get_healthy_backends
+        try:
+            from seif.bridge.ai_bridge import detect_backends
+            from seif.bridge.backend_health import describe_health, load_health, get_healthy_backends
+        except ImportError:
+            print("This feature requires seif-engine. Install: pip install seif-engine")
+            return
         detected = detect_backends()
         healthy = get_healthy_backends(detected)
         print(f"Detected backends: {', '.join(detected) or 'none'}")
@@ -2822,7 +2950,11 @@ def main():
         return
 
     if args.audit:
-        from seif.context.autonomous import audit_context, find_context_repo
+        try:
+            from seif.context.autonomous import audit_context, find_context_repo
+        except ImportError:
+            print("This feature requires seif-engine. Install: pip install seif-engine")
+            return
         ctx = args.context_repo or find_context_repo() or ".seif"
         print(f"Auditing: {ctx}")
         result = audit_context(ctx, fix=True, sync=True)
@@ -2870,14 +3002,18 @@ def main():
         return
 
     if args.session:
-        from seif.context.sessions import (
-            create_session, contribute_to_session, close_session,
-            list_sessions, describe_session, session_log,
-            create_session_v2, add_participant, create_sync_point,
-            generate_sync_prompt, contribute_with_sync_check,
-            needs_sync, upgrade_to_v2,
-        )
-        from seif.context.autonomous import find_context_repo
+        try:
+            from seif.context.sessions import (
+                create_session, contribute_to_session, close_session,
+                list_sessions, describe_session, session_log,
+                create_session_v2, add_participant, create_sync_point,
+                generate_sync_prompt, contribute_with_sync_check,
+                needs_sync, upgrade_to_v2,
+            )
+            from seif.context.autonomous import find_context_repo
+        except ImportError:
+            print("This feature requires seif-engine. Install: pip install seif-engine")
+            return
         ctx = args.context_repo or find_context_repo() or ".seif"
         action = args.session.lower()
         name = args.session_name

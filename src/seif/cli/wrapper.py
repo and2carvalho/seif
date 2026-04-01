@@ -136,7 +136,11 @@ def _build_prompt() -> str:
 
 def _signal_protocol_status():
     """Signal to the human that the protocol loaded correctly."""
-    from seif.context.context_manager import estimate_tokens, list_modules
+    try:
+        from seif.context.context_manager import estimate_tokens, list_modules
+    except ImportError:
+        print("[SEIF] Context manager not available. Install: pip install seif-engine", file=sys.stderr)
+        return
     from seif.core.resonance_signal import load_and_validate
     from seif.data.paths import get_resonance_path
 
@@ -279,7 +283,11 @@ def _launch_gemini(prompt: str, print_mode: bool, extra_args: list[str]):
 
 def cmd_status():
     """Show context hierarchy."""
-    from seif.context.context_manager import estimate_tokens, list_modules
+    try:
+        from seif.context.context_manager import estimate_tokens, list_modules
+    except ImportError:
+        print("This feature requires seif-engine. Install: pip install seif-engine")
+        return
     from seif.data.paths import get_resonance_path
 
     print("═══ S.E.I.F. STATUS ═══")
@@ -411,7 +419,11 @@ def _run_chat(argv: list[str]):
 
     parsed = parser.parse_args(argv)
 
-    from seif.cli.chat import run_chat
+    try:
+        from seif.cli.chat import run_chat
+    except ImportError:
+        print("This feature requires seif-engine. Install: pip install seif-engine")
+        return
     run_chat(
         backend=parsed.backend,
         model=parsed.model,
@@ -439,14 +451,22 @@ def _run_serve(argv: list[str]):
     parsed = parser.parse_args(argv)
 
     if parsed.v2:
-        from seif.cli.serve_v2 import run_server_v2
+        try:
+            from seif.cli.serve_v2 import run_server_v2
+        except ImportError:
+            print("This feature requires seif-engine. Install: pip install seif-engine")
+            return
         run_server_v2(
             host=parsed.host,
             port=parsed.port,
             max_classification=parsed.max_classification,
         )
     else:
-        from seif.cli.serve import run_server
+        try:
+            from seif.cli.serve import run_server
+        except ImportError:
+            print("This feature requires seif-engine. Install: pip install seif-engine")
+            return
         run_server(
             host=parsed.host,
             port=parsed.port,

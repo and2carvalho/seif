@@ -36,15 +36,15 @@ Every response gets a grade (A-F) and a stance (GROUNDED, MIXED, or DRIFT). Veri
 ### 2. Classification Gate — Is sensitive data leaking?
 
 ```bash
-seif --init                    # scan your project
-seif --export --classification PUBLIC   # only export public content
+seif --gate "password = hunter2; also the sky is blue"
+# Classification: CONFIDENTIAL | Reason: keyword match (password)
 ```
 
 Content is automatically classified as PUBLIC, INTERNAL, or CONFIDENTIAL. Keywords like `password`, `api_key`, `CVE` auto-escalate to CONFIDENTIAL. The classification gate blocks sensitive data from leaving your environment.
 
 Works as a [Claude Code hook](#claude-code-plugin) — blocks writes containing credentials or classified markers in real-time.
 
-### 3. Multi-AI Consensus — Let them debate
+### 3. Multi-AI Consensus — Let them debate *(requires seif-engine)*
 
 ```bash
 seif --consensus "Should we use microservices or a monolith for a 3-person team?" \
@@ -52,13 +52,9 @@ seif --consensus "Should we use microservices or a monolith for a 3-person team?
 # Claude: monolith (velocity, simplicity)
 # Grok: monolith (team size, operational cost)
 # Consensus: CONVERGED — monolith for teams < 5
-
-seif --adversarial "Is our auth middleware secure?"
-# Compares response WITH protocol context vs WITHOUT
-# Delta report shows what context changes
 ```
 
-One question goes to multiple AIs. They analyze independently, compare results, and converge. You get the answer they all agree on.
+One question goes to multiple AIs. They analyze independently, compare results, and converge. You get the answer they all agree on. Requires `seif-engine` (private, not included in `pip install seif-cli`).
 
 ---
 
@@ -66,13 +62,21 @@ One question goes to multiple AIs. They analyze independently, compare results, 
 
 ```bash
 pip install seif-cli
-cd my-project
-seif --init                    # scan project, extract git context, generate .seif/
-seif --sync                    # re-sync after code changes
-seif --quality-gate "text"     # grade AI output (A-F)
+
+# Grade AI output (works immediately)
+seif --quality-gate "Python 3.11 added tomllib" --role ai
+# Grade: A | Stance: GROUNDED | Verifiable: 100%
+
+# Classify content (works immediately)
+seif --gate "SELECT * FROM users WHERE api_key = 'sk-...'"
+# Classification: CONFIDENTIAL
+
+# Resonance encoding (works immediately)
+seif --encode "any text"
+seif --composite "any text"
 ```
 
-That's it. Your project now has persistent, classified, quality-measured context.
+No project setup required. These commands work standalone on any text.
 
 ## Claude Code Plugin
 
@@ -92,26 +96,35 @@ cp -r plugins/claude-code/skills/* .claude/skills/
 
 ## CLI Commands
 
+### Standalone (`pip install seif-cli`)
+
 ```bash
-# === Core (pip install seif-cli) ===
-seif --init                          # initialize .seif context
-seif --sync                          # re-sync git context
-seif --quality-gate "text"           # measure quality (Grade A-F)
+seif --quality-gate "text" --role ai # measure quality (Grade A-F, stance detection)
+seif --gate "text"                   # classification gate (PUBLIC/INTERNAL/CONFIDENTIAL)
+seif --encode "text"                 # resonance encoding
+seif --composite "text"              # 8-layer resonance map
+seif --fingerprint-verify FILE       # verify .seif module integrity
+seif --constants                     # show mathematical constants
+```
+
+### Full (`seif-cli` + `seif-engine`)
+
+These commands require the `seif-engine` backend (private, not on PyPI):
+
+```bash
+seif --init                          # scan project, extract git context, generate .seif/
+seif --sync                          # re-sync git context after changes
 seif --compress                      # compress project into .seif (93% reduction)
+seif --ingest daily.txt              # filter meeting notes by project
+seif --scan "git"                    # auto-generate CLI knowledge from --help
+seif --workspace                     # multi-project discovery + sync
+seif --autonomous enable             # AI persists knowledge autonomously
 seif --export                        # export context as markdown
 
-# === Classification ===
-seif --export --classification PUBLIC        # only public modules
-seif --autonomous enable                     # AI persists knowledge autonomously
-
-# === Multi-AI (pip install seif-cli[consensus]) ===
-seif --consult "question"                    # auto-route to best AI
+# Multi-AI
+seif --consult "question"            # auto-route to best AI
 seif --consensus "q" --backends claude,grok  # cross-AI consensus
-seif --adversarial "question"                # WITH vs WITHOUT comparison
-
-# === Workspace ===
-seif --workspace                     # multi-project discovery + sync
-seif --scan "git"                    # auto-generate CLI knowledge from --help
+seif --adversarial "question"        # WITH vs WITHOUT comparison
 ```
 
 ## How Quality Gate Works
