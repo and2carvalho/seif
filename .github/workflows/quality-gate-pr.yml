@@ -1,0 +1,362 @@
+name: Quality Gate — PR
+
+on:
+  pull_request:
+    branches: [dev, main]
+
+permissions:
+  pull-requests: write
+  contents: write
+
+jobs:
+  quality-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements-gate.txt
+
+      - name: Run Quality Gate on PR content
+        id: gate
+        env:
+          PYTHONPATH: src
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          python -c "
+          import os, subprocess, sys
+          sys.path.insert(0, 'src')
+          from seif.analysis.quality_gate import assess
+
+          grade_order = {'A': 5, 'B': 4, 'C': 3, 'D': 2, 'F': 1}
+          worst_grade = 'A'
+          results = []
+          has_seif_files = False
+
+          # 1. Assess PR description (informational — does not block merge)
+          pr_body = os.environ.get('PR_BODY', '')
+          if pr_body and len(pr_body.strip()) > 20:
+              v = assess(pr_body[:2000], role='ai')
+              icon = {5: '+', 4: '+', 3: '~', 2: '-', 1: '-'}.get(grade_order.get(v.grade, 0), '?')
+              results.append(f'[{icon}] PR Description: Grade {v.grade} (score {v.score:.3f}, {v.status}) *[info only]*')
+
+          # 2. Assess changed .seif content files (these DO block merge if below C)
+          base = os.environ.get('GITHUB_BASE_REF', 'dev')
+          diff_out = subprocess.run(
+              ['git', 'diff', '--name-only', f'origin/{base}...HEAD'],
+              capture_output=True, text=True
+          ).stdout.strip()
+
+          import json as _json
+          # System .seif files (models, defaults, src copies) are structured data,
+          # not prose — they score low on stance/resonance by design.
+          # Only user/AI-created context files should block merges.
+          skip_prefixes = ('models/', 'data/defaults/', 'src/seif/data/')
+          for f in diff_out.split('\n'):
+              f = f.strip()
+              if not f or not os.path.exists(f):
+                  continue
+              if not f.endswith('.seif'):
+                  continue
+              if f.startswith(skip_prefixes):
+                  continue
+              has_seif_files = True
+              raw = open(f).read()
+              # Extract summary field from JSON .seif modules for accurate assessment
+              try:
+                  data = _json.loads(raw)
+                  content = data.get('summary', raw)[:2000]
+              except (ValueError, KeyError):
+                  content = raw[:2000]
+              if len(content.strip()) < 20:
+                  continue
+              v = assess(content)
+              icon = {5: '+', 4: '+', 3: '~', 2: '-', 1: '-'}.get(grade_order.get(v.grade, 0), '?')
+              results.append(f'[{icon}] {f}: Grade {v.grade} (score {v.score:.3f}, {v.status})')
+              if v.flags:
+                  for fl in v.flags[:2]:
+                      results.append(f'      {fl}')
+              if grade_order.get(v.grade, 0) < grade_order.get(worst_grade, 5):
+                  worst_grade = v.grade
+
+          # 3. Write report — only block if .seif files are below grade C
+          passing = (not has_seif_files) or grade_order.get(worst_grade, 0) >= 3
+          report_lines = ['## Quality Gate Verdict', '']
+          report_lines += results if results else ['(no assessable content found)']
+          report_lines += ['', f'**Overall: {\"PASS\" if passing else \"FAIL\"}** (worst grade: {worst_grade})']
+          if not passing:
+              report_lines.append('> Merge blocked: Quality Gate requires Grade C or above.')
+          report_lines.append('')
+          report_lines.append('---')
+          report_lines.append('*The gate does not filter — it resonates.*')
+
+          report = '\n'.join(report_lines)
+          print(report)
+
+          with open('quality_report.md', 'w') as out:
+              out.write(report)
+
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
+              out.write(f'grade={worst_grade}\n')
+              out.write(f'passing={\"true\" if passing else \"false\"}\n')
+          "
+
+      - name: Detect AI contribution
+        id: ai_detect
+        run: |
+          base="${GITHUB_BASE_REF:-dev}"
+          AI_PATTERN="Claude|Anthropic|Grok|xAI|Gemini|Google|DeepSeek|Kimi|Moonshot|Z\.AI|OpenAI|GPT"
+          co_authors=$(git log "origin/${base}..HEAD" --format="%b" 2>/dev/null | grep -ioE "Co-Authored-By:.*($AI_PATTERN)[^<]*" | head -5 || true)
+          if [ -n "$co_authors" ]; then
+            echo "is_ai=true" >> "$GITHUB_OUTPUT"
+            ai_model=$(echo "$co_authors" | head -1 | grep -ioE "(claude|grok|gemini|deepseek|kimi|openai|bigpickle)" | head -1 | tr '[:upper:]' '[:lower:]')
+            echo "ai_model=${ai_model:-unknown}" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_ai=false" >> "$GITHUB_OUTPUT"
+            echo "ai_model=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Ensure context hygiene
+        env:
+          PYTHONPATH: src
+        run: |
+          python -c "
+          import sys; sys.path.insert(0, 'src')
+          from seif.context.autonomous import audit_context
+          result = audit_context('.seif', fix=True, sync=False)
+          print(result)
+          "
+
+      - name: Run SEIF Code Review
+        id: review
+        env:
+          PYTHONPATH: src
+          AI_MODEL: ${{ steps.ai_detect.outputs.ai_model }}
+        run: |
+          base="${GITHUB_BASE_REF:-dev}"
+          ai_flag=""
+          if [ -n "$AI_MODEL" ]; then
+            ai_flag="--ai-author $AI_MODEL"
+          fi
+          python scripts/seif_review.py --base "$base" $ai_flag 2>&1 | tee seif_review.txt
+          # Append review to quality report
+          if [ -s seif_review.txt ]; then
+            echo "" >> quality_report.md
+            echo "---" >> quality_report.md
+            echo "" >> quality_report.md
+            echo "## SEIF Code Review" >> quality_report.md
+            echo '```' >> quality_report.md
+            cat seif_review.txt >> quality_report.md
+            echo '```' >> quality_report.md
+          fi
+
+      - name: Comment verdict on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('quality_report.md', 'utf8');
+            const {data: comments} = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c =>
+              c.user.type === 'Bot' && c.body.includes('Quality Gate Verdict')
+            );
+            const body = report;
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+      - name: Persist review as .seif module
+        if: hashFiles('seif_review.txt') != ''
+        env:
+          PYTHONPATH: src
+        run: |
+          python scripts/create_review_module.py \
+            --input seif_review.txt \
+            --quality-report quality_report.md \
+            --pr ${{ github.event.pull_request.number }} \
+            --run-id ${{ github.run_id }} \
+            --output .seif/projects/seif/review-codex-PR${{ github.event.pull_request.number }}.seif
+
+      - name: Commit review module to PR branch
+        if: hashFiles('.seif/projects/seif/review-codex-*.seif') != ''
+        continue-on-error: true
+        run: |
+          git config user.name "seif-codex[bot]"
+          git config user.email "seif-codex[bot]@users.noreply.github.com"
+          git add .seif/projects/seif/review-codex-*.seif
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore(seif): persist Codex review as .seif module [skip ci]"
+            git push origin HEAD:${{ github.head_ref }}
+          fi
+
+      - name: Label AI contribution
+        if: steps.ai_detect.outputs.is_ai == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            try {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                labels: ['ai-contribution'],
+              });
+            } catch (e) {
+              // Label may not exist yet — create it
+              try {
+                await github.rest.issues.createLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: 'ai-contribution',
+                  color: '7B68EE',
+                  description: 'PR proposed by an AI agent',
+                });
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  labels: ['ai-contribution'],
+                });
+              } catch (e2) {
+                console.log('Could not create/apply label:', e2.message);
+              }
+            }
+
+      - name: Security Gate — Blue Team Audit
+        id: security
+        env:
+          PYTHONPATH: src
+        run: |
+          python -c "
+          import sys, os, json
+          sys.path.insert(0, 'src')
+          from seif.security.redblue import blue_team_audit
+          from seif.context.autonomous import classify_content, load_config, CLASSIFICATION_LEVELS
+          import subprocess
+
+          # 1. Run Blue Team audit on .seif if present
+          if os.path.isdir('.seif'):
+              audit = blue_team_audit('.seif')
+              print(f'Blue Team: {audit.modules_audited} modules, compliance={audit.compliance_score:.1%}, grade={audit.grade()}')
+              for issue in audit.issues[:10]:
+                  print(f'  [!] {issue}')
+          else:
+              print('No .seif directory in repo — skipping Blue Team audit')
+              audit = None
+
+          # 2. Scan changed files for confidential content leaking into public branch
+          import re
+          base = os.environ.get('GITHUB_BASE_REF', 'dev')
+          diff_out = subprocess.run(
+              ['git', 'diff', '--name-only', f'origin/{base}...HEAD'],
+              capture_output=True, text=True
+          ).stdout.strip()
+
+          config = load_config('.seif') if os.path.isdir('.seif') else {}
+          confidential_keywords = config.get('confidential_keywords', [
+              'vulnerability', 'CVE', 'exploit', 'secret', 'password',
+              'credential', 'breach', 'pentest',
+              'attack vector', 'security gap', 'audit finding',
+          ])
+          from seif.constants import SENSITIVE_CONTENT_PATTERNS
+
+          # Paths that inherently contain security-related vocabulary
+          safe_path_prefixes = (
+              '.github/workflows/',   # CI configs reference secrets.* by design
+              'tests/',               # test data, not real secrets
+              'src/seif/security/',   # security modules discuss security concepts
+              'src/seif/constants',   # constant definitions
+          )
+
+          leaks = []
+          for f in diff_out.split('\n'):
+              f = f.strip()
+              if not f or not os.path.exists(f):
+                  continue
+              # Skip files expected to contain security vocabulary
+              if any(f.startswith(p) for p in safe_path_prefixes):
+                  continue
+              # Skip protocol kernel (discusses classification by design)
+              if f == 'RESONANCE.json':
+                  continue
+              try:
+                  content = open(f, encoding='utf-8', errors='ignore').read()
+              except OSError:
+                  continue
+              content_lower = content.lower()
+              # Check confidential keywords with word boundaries (not substring)
+              if not f.endswith('.seif'):
+                  for kw in confidential_keywords:
+                      if re.search(r'\b' + re.escape(kw.lower()) + r'\b', content_lower):
+                          leaks.append(f'{f}: contains confidential keyword \"{kw}\"')
+                          break
+              # Check sensitive content patterns (actual secrets, not vocabulary)
+              for pat in SENSITIVE_CONTENT_PATTERNS:
+                  if pat in content:
+                      leaks.append(f'{f}: contains sensitive pattern \"{pat}\"')
+                      break
+
+          # 3. Report
+          if leaks:
+              print()
+              print('## SECURITY GATE — LEAKS DETECTED')
+              for leak in leaks[:20]:
+                  print(f'  [BLOCK] {leak}')
+              print(f'Total: {len(leaks)} file(s) with potential leaks')
+
+          security_pass = len(leaks) == 0
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
+              out.write(f'security_passing={\"true\" if security_pass else \"false\"}\n')
+              out.write(f'leak_count={len(leaks)}\n')
+
+          # Append to quality report
+          with open('quality_report.md', 'a') as out:
+              out.write('\n---\n\n## Security Gate\n\n')
+              if audit:
+                  out.write(f'Blue Team: {audit.modules_audited} modules audited, compliance {audit.compliance_score:.1%} (Grade {audit.grade()})\n\n')
+              if leaks:
+                  out.write('**BLOCKED — Confidential content detected in changed files:**\n\n')
+                  for leak in leaks[:20]:
+                      out.write(f'- {leak}\n')
+              else:
+                  out.write('No confidential leaks detected in changed files.\n')
+          "
+
+      - name: Enforce Quality Gate
+        if: steps.gate.outputs.passing == 'false'
+        run: |
+          echo "::error::Quality Gate FAILED — Grade ${{ steps.gate.outputs.grade }} is below minimum (C)"
+          exit 1
+
+      - name: Enforce Security Gate
+        if: steps.security.outputs.security_passing == 'false'
+        run: |
+          echo "::error::Security Gate FAILED — ${{ steps.security.outputs.leak_count }} file(s) contain confidential content"
+          exit 1

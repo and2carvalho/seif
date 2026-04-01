@@ -1,0 +1,2 @@
+include src/seif/data/RESONANCE.json
+recursive-include src/seif/data/defaults *.seif

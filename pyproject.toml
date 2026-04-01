@@ -1,0 +1,91 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "seif-cli"
+version = "0.1.2"
+description = "Measure AI output quality, protect sensitive data, and build multi-AI consensus. Works with any LLM."
+readme = "README.md"
+license = {text = "CC-BY-NC-SA-4.0"}
+requires-python = ">=3.11"
+authors = [
+    {name = "André Cunha Antero de Carvalho"},
+]
+keywords = [
+    "ai-quality", "llm-guardrails", "ai-consensus", "data-classification",
+    "context-management", "ai-safety", "multi-ai", "quality-gate",
+    "prompt-evaluation", "ai-grounding",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Security",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+
+# Core: quality gate + context + classification (no heavy deps)
+dependencies = [
+    "numpy>=2.0",
+    "scipy>=1.14",
+]
+
+[project.optional-dependencies]
+# Inter-AI consensus (needs API client)
+consensus = [
+    "anthropic>=0.80",
+]
+# Visual generators (fractal QR, glyphs, circuits, audio)
+generators = [
+    "matplotlib>=3.9",
+    "Pillow>=10.0",
+    "opencv-python-headless>=4.8",
+    "svgwrite>=1.4",
+]
+# Web interface (Streamlit dashboard)
+web = [
+    "streamlit>=1.28",
+]
+# Telegram bot bridge
+telegram = [
+    "python-telegram-bot>=21.0",
+]
+# QR code generation and decoding
+qr = [
+    "qrcode[pil]>=7.4",
+    "Pillow>=10.0",
+    "pyzbar>=0.1.9",
+]
+# Everything
+all = [
+    "seif-cli[consensus,generators,web,telegram,qr]",
+]
+
+[project.urls]
+Homepage = "https://github.com/and2carvalho/seif"
+Documentation = "https://github.com/and2carvalho/seif"
+Repository = "https://github.com/and2carvalho/seif"
+"Live Demo" = "https://seif-framework.streamlit.app"
+
+[project.scripts]
+seif = "seif.cli.wrapper:main"
+seif-cli = "seif.cli.wrapper:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+seif = [
+    "py.typed",
+    "data/RESONANCE.json",
+    "data/defaults/*.seif",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

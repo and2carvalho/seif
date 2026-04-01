@@ -1,0 +1,42 @@
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+*.egg-info/
+dist/
+build/
+node_modules/
+package-lock.json
+.DS_Store
+# .streamlit/ is VERSIONED (needed for Streamlit Cloud deploy)
+output/
+data/modules/
+data/sessions/
+context_package.json
+# data/defaults/ is VERSIONED (ships with repo as demo)
+conversa.md
+docs/article-drafts-archive/
+marketing/
+assets/screenshots/
+
+# Secrets & credentials
+.env
+.env.*
+*.key
+*.pem
+*.p12
+*.pfx
+*.secret
+credentials.json
+
+# SEIF private context
+.claude/
+.seif/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo

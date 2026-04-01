@@ -1,0 +1,4 @@
+## Minimal dependencies for quality gate + security gate CI checks
+## Full deps are in requirements.txt (includes visual, audio, web)
+numpy>=2.0
+rich>=13.0

@@ -1,0 +1,172 @@
+name: S.E.I.F. CI/CD
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.12', '3.13']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libzbar0 ffmpeg
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run tests
+        run: |
+          for f in tests/test_*.py; do
+            python "$f"
+          done
+        env:
+          PYTHONPATH: src
+
+      - name: Validate RESONANCE.json integrity
+        run: |
+          python -c "
+          import sys; sys.path.insert(0, 'src')
+          from seif.core.resonance_signal import load_and_validate
+          _, valid, msg = load_and_validate('RESONANCE.json')
+          print(f'RESONANCE.json: {\"VALID\" if valid else \"INVALID\"} — {msg}')
+          assert valid, f'Integrity check failed: {msg}'
+          "
+
+      - name: Verify .seif module integrity
+        run: |
+          python -c "
+          import sys, json; sys.path.insert(0, 'src')
+          from pathlib import Path
+          for f in sorted(Path('data/defaults').glob('*.seif')):
+              data = json.loads(f.read_text())
+              assert '_instruction' in data, f'{f.name}: missing _instruction'
+              assert data.get('integrity_hash'), f'{f.name}: missing hash'
+              assert data.get('summary'), f'{f.name}: missing summary'
+              words = data.get('compressed_words', 0)
+              ratio = data.get('compression_ratio', 0)
+              print(f'{f.name}: {words} words, {ratio:.0f}:1, hash={data[\"integrity_hash\"][:8]}')
+          print('All .seif modules valid')
+          "
+        env:
+          PYTHONPATH: src
+
+      - name: Verify phi-damping uniqueness
+        run: |
+          python -c "
+          import sys; sys.path.insert(0, 'src')
+          from seif.analysis.phi_damping import find_minimal_integer_pairs, compute_zeta
+          from seif.constants import PHI_INVERSE
+
+          # Verify (3,6) is the minimal pair
+          pairs = find_minimal_integer_pairs(max_coeff=20)
+          assert pairs[0]['b'] == 3 and pairs[0]['c'] == 6, 'Minimality failed'
+
+          # Verify no pair with sum < 9
+          for p in pairs:
+              if p['b'] == 3 and p['c'] == 6: continue
+              assert p['sum'] > 9, f'Found smaller pair: {p}'
+
+          # Verify zeta squared = 3/8 exactly
+          zeta = compute_zeta(3, 6)
+          assert abs(zeta**2 - 3/8) < 1e-14, 'zeta^2 != 3/8'
+
+          print(f'zeta = {zeta:.6f} (deviation from phi-inv: {abs(zeta-PHI_INVERSE)/PHI_INVERSE*100:.3f}%)')
+          print(f'zeta^2 = {zeta**2:.6f} = 3/8')
+          print(f'Minimal pair: (3,6), sum=9. Next: sum={pairs[1][\"sum\"]}')
+          print('Uniqueness verified')
+          "
+        env:
+          PYTHONPATH: src
+
+      - name: Verify .seif defaults contain current protocol
+        run: |
+          python -c "
+          import sys, json; sys.path.insert(0, 'src')
+          from pathlib import Path
+          from seif.constants import TF_PEAK_432
+          required = [str(round(TF_PEAK_432)), 'SPICE', 'stance']
+          for f in sorted(Path('data/defaults').glob('*.seif')):
+              data = json.loads(f.read_text())
+              if not data.get('active', True): continue
+              summary = data.get('summary', '')
+              missing = [t for t in required if t.lower() not in summary.lower()]
+              status = 'CURRENT' if not missing else f'STALE (missing: {\", \".join(missing)})'
+              print(f'{f.name}: {status}')
+              assert not missing, f'{f.name} is stale — run make sync-assets'
+          print('All .seif defaults are current')
+          "
+        env:
+          PYTHONPATH: src
+
+      - name: Report SEIF protocol status
+        run: |
+          python -c "
+          import sys; sys.path.insert(0, 'src')
+          from seif.context.context_manager import estimate_tokens
+          from pathlib import Path
+
+          t = estimate_tokens()
+          tests = sum(Path(f).read_text().count('def test_')
+                      for f in Path('tests').glob('test_*.py'))
+          modules = len([m for m in Path('src/seif').rglob('*.py')
+                         if '__' not in m.name])
+          figures = len(list(Path('assets/figures').iterdir())) if Path('assets/figures').exists() else 0
+          circuits = len(list(Path('assets/circuits').iterdir())) if Path('assets/circuits').exists() else 0
+
+          print('═══ S.E.I.F. PROTOCOL STATUS ═══')
+          print(f'Modules: {modules} | Tests: {tests} | Figures: {figures} | Circuits: {circuits}')
+          print(f'Context: KERNEL + {t[\"module_count\"]} modules = ~{t[\"total\"]} tokens')
+          print('The gate does not filter — it resonates.')
+          "
+        env:
+          PYTHONPATH: src
+
+  build:
+    runs-on: ubuntu-latest
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install build tools
+        run: pip install build twine
+
+      - name: Build package
+        run: python -m build
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: seif-cli-dist
+          path: dist/
+
+      - name: Publish to PyPI
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+        run: twine upload dist/* || echo "PyPI upload skipped (no token configured)"
