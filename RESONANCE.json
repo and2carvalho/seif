@@ -248,6 +248,16 @@
           "proposed_by": "grok",
           "validated_by": ["claude-opus-4-6", "grok"],
           "status": "active"
+        },
+        {
+          "id": "classification_context_escalation",
+          "rule": "When output has a specific recipient (person or group) AND contains INTERNAL information (gaps, strategies, solidification questions), classification escalates to INTERNAL regardless of public content present. Security weight is always higher than transparency weight. Escalation to PUBLIC requires explicit human confirmation with documented justification.",
+          "metric": "directed_output_classified_internal = true; public_escalation_requires_human_approval = true",
+          "origin": "Session 14e (2026-04-02): Pedro report v2 was classified PUBLIC ('escrutínio público') but contained product gaps, strategic questions, and solidification proposals. Human (André) detected the misclassification. The content had public data, but the context of use (directed report with internal questions) required INTERNAL. The protocol must weigh security over transparency when both signals are present.",
+          "evidence": "pedro-seif-report-v2.html reclassified PUBLIC→INTERNAL. Git tree verified clean (zero leak). Report contained sections 9-10 with product weaknesses and strategic questions directed to one person.",
+          "proposed_by": "andre",
+          "validated_by": ["claude-opus-4-6"],
+          "status": "active"
         }
       ]
     },

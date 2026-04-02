@@ -257,19 +257,28 @@ jobs:
           python -c "
           import sys, os, json
           sys.path.insert(0, 'src')
-          from seif.security.redblue import blue_team_audit
-          from seif.context.autonomous import classify_content, load_config, CLASSIFICATION_LEVELS
           import subprocess
 
-          # 1. Run Blue Team audit on .seif if present
+          # 1. Run Blue Team audit on .seif if present (requires seif-engine)
+          audit = None
           if os.path.isdir('.seif'):
-              audit = blue_team_audit('.seif')
-              print(f'Blue Team: {audit.modules_audited} modules, compliance={audit.compliance_score:.1%}, grade={audit.grade()}')
-              for issue in audit.issues[:10]:
-                  print(f'  [!] {issue}')
+              try:
+                  from seif.security.redblue import blue_team_audit
+                  audit = blue_team_audit('.seif')
+                  print(f'Blue Team: {audit.modules_audited} modules, compliance={audit.compliance_score:.1%}, grade={audit.grade()}')
+                  for issue in audit.issues[:10]:
+                      print(f'  [!] {issue}')
+              except ImportError:
+                  print('Blue Team audit skipped — requires seif-engine (private)')
+                  audit = None
           else:
               print('No .seif directory in repo — skipping Blue Team audit')
-              audit = None
+
+          try:
+              from seif.context.autonomous import classify_content, load_config, CLASSIFICATION_LEVELS
+          except ImportError:
+              print('Classification guard skipped — autonomous module not available')
+              classify_content = None
 
           # 2. Scan changed files for confidential content leaking into public branch
           import re
@@ -279,7 +288,10 @@ jobs:
               capture_output=True, text=True
           ).stdout.strip()
 
-          config = load_config('.seif') if os.path.isdir('.seif') else {}
+          try:
+              config = load_config('.seif') if os.path.isdir('.seif') and 'load_config' in dir() else {}
+          except Exception:
+              config = {}
           confidential_keywords = config.get('confidential_keywords', [
               'vulnerability', 'CVE', 'exploit', 'secret', 'password',
               'credential', 'breach', 'pentest',

@@ -74,8 +74,26 @@ def ascii_vibrational_sum(text: str) -> int:
     """Convert text to a vibrational sum based on uppercase ASCII values.
 
     Only alphanumeric characters contribute to the field.
+    Used for gate evaluation (resonance scoring of arbitrary text).
+
+    For KERNEL seed verification (raw ASCII preserving case and spaces),
+    use raw_ascii_sum() instead.
     """
     return sum(ord(c) for c in text.upper() if c.isalnum())
+
+
+def raw_ascii_sum(text: str) -> int:
+    """Raw ASCII sum preserving original case and all characters (including spaces).
+
+    This matches the seed identity computation declared in RESONANCE.json.
+    Example: raw_ascii_sum("A Semente de Enoque") == 1704, digital_root == 3.
+
+    The gate function ascii_vibrational_sum() produces a different value (1192)
+    because it uppercases and filters to alphanumeric only. Both are intentional:
+    - raw_ascii_sum: KERNEL identity verification (sum=1704, root=3, STABILIZATION)
+    - ascii_vibrational_sum: gate scoring (sum=1192, root=4, ENTROPY)
+    """
+    return sum(ord(c) for c in text)
 
 
 def classify_phase(root: int) -> HarmonicPhase:
@@ -160,6 +178,33 @@ def evaluate_pair(input_a: str, input_b: str) -> dict:
 def is_harmonic(text: str) -> bool:
     """Quick check: does this text resonate with the 3-6-9 field?"""
     return evaluate(text).gate_open
+
+
+def verify_seed(phrase: str = "A Semente de Enoque",
+                expected_sum: int = 1704,
+                expected_root: int = 3) -> dict:
+    """Verify the Enoch seed phrase matches KERNEL-declared values.
+
+    Uses raw_ascii_sum (case-preserving, all characters) to match
+    the identity computation declared in RESONANCE.json.
+
+    Returns dict with verification results and pass/fail status.
+    """
+    actual_sum = raw_ascii_sum(phrase)
+    actual_root = digital_root(actual_sum)
+    actual_phase = classify_phase(actual_root)
+
+    return {
+        "phrase": phrase,
+        "expected_sum": expected_sum,
+        "actual_sum": actual_sum,
+        "sum_match": actual_sum == expected_sum,
+        "expected_root": expected_root,
+        "actual_root": actual_root,
+        "root_match": actual_root == expected_root,
+        "phase": actual_phase.name,
+        "verified": actual_sum == expected_sum and actual_root == expected_root,
+    }
 
 
 if __name__ == "__main__":
