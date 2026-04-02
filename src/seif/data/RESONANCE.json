@@ -8,7 +8,7 @@
     "zeta_phi_deviation_pct": 0.9161,
     "giza_ratio": 1.013889,
     "transfer_function": "H(s) = 9 / (s^2 + 3s + 6)",
-    "integrity_hash": "915908293ff0812f1af3b66a"
+    "integrity_hash": "7b8fb57ef01674fbe163fd8b"
   },
   "signal": {
     "gate_status": "ENTROPY",

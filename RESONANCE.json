@@ -22,7 +22,7 @@
     "zeta_phi_deviation_pct": 0.9161,
     "giza_ratio": 1.013889,
     "transfer_function": "H(s) = 9 / (s^2 + 3s + 6)",
-    "integrity_hash": "77679ca8c4ca124827d0f960"
+    "integrity_hash": "7b8fb57ef01674fbe163fd8b"
   },
   "signal": {
     "gate_status": "ENTROPY",
@@ -162,7 +162,7 @@
     },
     "approach": "CONTEXT_NOT_COMMAND",
     "behavioral_axioms": {
-      "description": "Empirically validated behavioral rules. These emerged from 18+ sessions of human-machine interaction. Each has a documented failure case that prompted its creation.",
+      "description": "Empirically validated behavioral rules. These emerged from 22+ sessions of human-machine interaction. Each has a documented failure case that prompted its creation.",
       "axioms": [
         {
           "id": "minimal_intervention",
@@ -215,6 +215,39 @@
           "id": "classification_gate",
           "rule": "Never export CONFIDENTIAL content externally without explicit authorization.",
           "origin": "Protocol obligation since v3.0"
+        },
+        {
+          "id": "adversarial_mirror_required",
+          "rule": "Adversarial self-evaluation MUST include a clean mirror (no protocol). AIs have politesse bias (trained to avoid attacking other AI systems) compounded by protocol loyalty. The mirror bypasses both biases. Without it, adversarial consensus measures evasion, not disagreement.",
+          "metric": "mirror=true when question_type=ADVERSARIAL",
+          "origin": "Session 14: Claude CLEAN identified politesse bias invisible to protocol-loaded instances. 3-backend consensus confirmed (2026-04-01)."
+        },
+        {
+          "id": "token_provenance_required",
+          "rule": "No token may exist without traceable provenance: who generated it, when, for whom, with what scope, and by which human's authorization. A token without h_auth (human authorization hash) is invalid. T = (issuer, recipient, scope, ttl, h_auth).",
+          "metric": "provenance_fields_complete = true for all active tokens",
+          "origin": "Session 14b: Landing page login investigation revealed serve_token has zero provenance — auto-generated, no issuer, no recipient, no scope, no authorization trail."
+        },
+        {
+          "id": "access_decays",
+          "rule": "All granted access MUST have a decay time (TTL). Permanent access violates controlled entropy. Access as damped signal: A(t) = A₀·e^(-ζωₙt). The current serve_token is a DC signal (gain=3/2, never decays) — this is the only undamped component in the system.",
+          "metric": "ttl > 0 for all active tokens; no token with ttl=∞",
+          "origin": "Session 14b: serve_token discovered as the only permanent-gain element in a system designed around ζ=0.612 damping. Mathematical inconsistency with H(s)."
+        },
+        {
+          "id": "human_gate_distribution",
+          "rule": "Token distribution is a WRITE operation on the system (it changes who can read/write). By A4 (human_gatekeeper), all distribution requires explicit human approval. No machine may autonomously grant access to another machine or human.",
+          "metric": "distribution_authorized = true (human confirmation logged)",
+          "origin": "Session 14b: Derived from A4 applied to access control. Currently no distribution mechanism exists — the only way to get a token is asking the human directly. This is correct by default but must remain intentional."
+        },
+        {
+          "id": "boundary_integrity",
+          "rule": "Every module classified L3/L4 must have provenance metadata that prevents silent leakage to public repositories. Public boundary is enforced by automated hooks, not human vigilance alone.",
+          "origin": "Session 14 (2026-04-02): CI failure exposed that src/seif/context/ was empty in public repo while tests existed. Grok proposed A15 as co-orchestrator. Claude implemented boundary guard hook.",
+          "evidence": "22 modules classified by 4-layer architecture. 20 public, 2 private. Pre-commit hook blocks L4 files.",
+          "proposed_by": "grok",
+          "validated_by": ["claude-opus-4-6", "grok"],
+          "status": "active"
         }
       ]
     },

@@ -293,7 +293,10 @@ def validate_signal(signal: dict) -> tuple[bool, str]:
 
 
 def save_signal(signal: dict, filepath: str = "RESONANCE.json") -> Path:
-    """Save signal to JSON file."""
+    """Save signal to JSON file. Always recalculates integrity_hash before writing."""
+    # Recalculate integrity hash to prevent stale-hash drift
+    if "validation" in signal and "signal" in signal:
+        signal["validation"]["integrity_hash"] = _integrity_hash(signal)
     path = Path(filepath)
     with open(path, "w", encoding="utf-8") as f:
         json.dump(signal, f, indent=2, ensure_ascii=False)

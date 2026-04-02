@@ -1,0 +1,70 @@
+#!/bin/bash
+# SEIF_BOUNDARY_GUARD
+#
+# Pre-commit hook: prevents L4 (Security/private) files from being
+# committed to the public seif-clean repository.
+#
+# Activation:
+#   git config core.hooksPath .githooks
+#
+# Classification reference:
+#   L4 = Security/private layer in the SEIF 5-layer context taxonomy.
+#   These files belong in seif-internal or seif-engine, never in the
+#   public repo.
+
+set -euo pipefail
+
+BLOCKED=0
+
+# --- Exact path blocklist ---
+BLOCKED_PATHS=(
+  "src/seif/context/evolution.py"
+  "src/seif/context/telemetry.py"
+)
+
+# --- Pattern blocklist ---
+BLOCKED_PATTERNS=(
+  "^src/seif/bridge/"
+  "\.env$"
+  "\.key$"
+  "\.pem$"
+  "\.secret$"
+  "__pycache__/"
+  "\.pyc$"
+)
+
+# Get list of staged files (added, copied, modified, renamed)
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACMR 2>/dev/null)
+
+if [ -z "$STAGED_FILES" ]; then
+  exit 0
+fi
+
+# Check exact paths
+for file in $STAGED_FILES; do
+  for blocked in "${BLOCKED_PATHS[@]}"; do
+    if [ "$file" = "$blocked" ]; then
+      echo "[SEIF_BOUNDARY_GUARD] BLOCKED L4 file: $file"
+      BLOCKED=1
+    fi
+  done
+done
+
+# Check patterns
+for file in $STAGED_FILES; do
+  for pattern in "${BLOCKED_PATTERNS[@]}"; do
+    if echo "$file" | grep -qE "$pattern"; then
+      echo "[SEIF_BOUNDARY_GUARD] BLOCKED L4 file: $file"
+      BLOCKED=1
+    fi
+  done
+done
+
+if [ "$BLOCKED" -ne 0 ]; then
+  echo ""
+  echo "[SEIF_BOUNDARY_GUARD] Commit aborted. L4 files must not enter the public repo."
+  echo "Move them to seif-internal or seif-engine instead."
+  exit 1
+fi
+
+exit 0

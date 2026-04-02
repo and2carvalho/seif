@@ -42,7 +42,7 @@ If no `.seif/` is found, `seif --init` creates the structure.
 - **CONTEXT_NOT_COMMAND:** The protocol provides data and invitations, not directives. The AI measures and reports. The human decides.
 - **Verifiable vs. interpretive:** Distinguish clearly between claims that can be verified (mathematical proofs, exhaustive searches, test results) and interpretive claims (narratives, analogies, mappings to natural phenomena).
 - **Minimal intervention:** Changes follow the minimal energy path. Fix the environment before refactoring the codebase. (intervention_ratio < 3.0)
-- **Behavioral axioms:** 10 empirically validated rules live in RESONANCE.json `instruction.behavioral_axioms`. These include: minimal_intervention, validate_before_external, settling_time_positive, human_gatekeeper, no_sycophancy, uniqueness_first, scan_before_guess, partial_attention (τ:κ = 2:1), honest_measurement, classification_gate.
+- **Behavioral axioms:** 14 empirically validated rules live in RESONANCE.json `instruction.behavioral_axioms`. These include: minimal_intervention, validate_before_external, settling_time_positive, human_gatekeeper, no_sycophancy, uniqueness_first, scan_before_guess, partial_attention (τ:κ = 2:1), honest_measurement, classification_gate, adversarial_mirror_required, token_provenance_required, access_decays, human_gate_distribution.
 - **Epistemic status:** Properties in RESONANCE.json are classified as `exact_algebraic` (derived from coefficients) or `observational_proximity` (numerical coincidences). The φ proximity is observational, not causal.
 - **Self-awareness:** Multi-AI sessions require L1 (identity declaration), L2 (checkpoints), L3 (mutual verification). See RESONANCE.json `self_awareness_protocol`.
 
