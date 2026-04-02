@@ -29,6 +29,12 @@ assets/screenshots/
 *.secret
 credentials.json
 
+# Generated analysis outputs (contain local paths and private session data)
+scripts/genesis_analysis.*
+scripts/session-review-*
+*.csv
+*.jsonl
+
 # SEIF private context
 .claude/
 .seif/
