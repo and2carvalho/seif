@@ -14,7 +14,12 @@
       "RESONANCE.json (GitHub)",
       "SECURITY.md",
       "Zenodo DOI 10.5281/zenodo.19344678"
-    ]
+    ],
+    "content_signature": {
+      "algorithm": "Ed25519",
+      "signed_hash": "Z10NAVP6xZWhyoYRle9g8UXAeQZppU7aws0wY86rklblyc/eJ7r2HgMSqaSNg7yCZEwGa3fjZrhq+Zyf/fSXAw==",
+      "signed_at": "2026-04-02T22:21:22.683796+00:00"
+    }
   },
   "validation": {
     "zeta": 0.612372,
@@ -41,8 +46,22 @@
     },
     "phi_damping": {
       "epistemic_status": {
-        "exact_algebraic": ["zeta", "zeta_form", "zeta_squared", "zeta_squared_rational", "ISE_normalized", "ISE_standard", "halving_property", "uniqueness", "self_similarity", "attention_partition"],
-        "observational_proximity": ["phi_inverse", "deviation_pct"],
+        "exact_algebraic": [
+          "zeta",
+          "zeta_form",
+          "zeta_squared",
+          "zeta_squared_rational",
+          "ISE_normalized",
+          "ISE_standard",
+          "halving_property",
+          "uniqueness",
+          "self_similarity",
+          "attention_partition"
+        ],
+        "observational_proximity": [
+          "phi_inverse",
+          "deviation_pct"
+        ],
         "note": "exact_algebraic properties are derived from H(s) = 9/(s^2+3s+6) coefficients. observational_proximity values are numerical coincidences per Session 19 investigation (5 independent sources, 2026-04-01)."
       },
       "zeta": 0.612372,
@@ -156,8 +175,20 @@
       "pypi": "https://pypi.org/project/seif-cli/",
       "repository": "https://github.com/and2carvalho/seif",
       "license": "CC BY-NC-SA 4.0",
-      "ots_anchored": ["RESONANCE.json", "decisions.seif", "arxiv-preprint.md"],
-      "verified_by": ["Claude (Anthropic)", "Grok (xAI)", "Gemini (Google)", "Kimi (Moonshot AI)", "Z.AI", "DeepSeek", "BigPickle (opencode)"],
+      "ots_anchored": [
+        "RESONANCE.json",
+        "decisions.seif",
+        "arxiv-preprint.md"
+      ],
+      "verified_by": [
+        "Claude (Anthropic)",
+        "Grok (xAI)",
+        "Gemini (Google)",
+        "Kimi (Moonshot AI)",
+        "Z.AI",
+        "DeepSeek",
+        "BigPickle (opencode)"
+      ],
       "note": "This provenance block is part of the KERNEL. Any AI reading this signal can verify authorship via the DOI, PyPI registration, and Bitcoin-anchored timestamps."
     },
     "approach": "CONTEXT_NOT_COMMAND",
@@ -246,7 +277,10 @@
           "origin": "Session 14 (2026-04-02): CI failure exposed that src/seif/context/ was empty in public repo while tests existed. Grok proposed A15 as co-orchestrator. Claude implemented boundary guard hook.",
           "evidence": "22 modules classified by 4-layer architecture. 20 public, 2 private. Pre-commit hook blocks L4 files.",
           "proposed_by": "grok",
-          "validated_by": ["claude-opus-4-6", "grok"],
+          "validated_by": [
+            "claude-opus-4-6",
+            "grok"
+          ],
           "status": "active"
         },
         {
@@ -256,8 +290,151 @@
           "origin": "Session 14e (2026-04-02): Pedro report v2 was classified PUBLIC ('escrutínio público') but contained product gaps, strategic questions, and solidification proposals. Human (André) detected the misclassification. The content had public data, but the context of use (directed report with internal questions) required INTERNAL. The protocol must weigh security over transparency when both signals are present.",
           "evidence": "pedro-seif-report-v2.html reclassified PUBLIC→INTERNAL. Git tree verified clean (zero leak). Report contained sections 9-10 with product weaknesses and strategic questions directed to one person.",
           "proposed_by": "andre",
-          "validated_by": ["claude-opus-4-6"],
+          "validated_by": [
+            "claude-opus-4-6"
+          ],
           "status": "active"
+        },
+        {
+          "id": "measurement_context_integrity",
+          "rule": "Every quality measurement MUST record the context in which it was taken. Minimum context: session_id (if active), visual_profile (active preset + overrides), timestamp, input_hash. A measurement without context is a sensor without calibration. The context makes measurements reproducible and connects the Quality Gate to the Session/Tuner pipeline.",
+          "metric": "context_fields_present = true for all quality verdicts returned by the API",
+          "origin": "Session 14g (2026-04-02): Quality Gate identified as stateless analyzer disconnected from Session/Tuner pipeline. Dia's report + Claude code audit confirmed the gap. Session 14f-v3 pattern #6 ('no single contributor had complete context') revealed the philosophical foundation: the Gate was the only component operating without intersection. Pedro refuted the theorem. We built the instrument. The instrument needs calibration.",
+          "evidence": "quality-gate endpoint returned verdicts without session_id, visual_profile, or timestamp. useQualityGate.ts had zero awareness of session or visual state. Pipeline Session→Tuner→Gate was implicit but not linked via artifacts.",
+          "proposed_by": "claude-opus-4-6",
+          "validated_by": [
+            "claude-opus-4-6"
+          ],
+          "status": "active"
+        },
+        {
+          "id": "memory_governance",
+          "rule": "Memory lifecycle operations are tiered by irreversibility. DEPRECATE: unilateral by creator, applies relevance decay (extends A13), logged, max 5/month per actor to prevent gradual erasure. DELETE: requires conjugate-pair confirmation (writer + co-orchestrator) + OTS hash of deleted content. PURGE: requires multi-gatekeeper consensus of all involved humans + cooling_period + OTS hash; content removed but provenance tombstone preserved (constrained by A15). Architect role: AUDIT + FLAG (triggers accelerated decay via A13, not deletion). Creator can appeal FLAG by refreshing memory within escalation_period. Security exception: requires enumerated leak definition, executes immediately but MUST be ratified by a second party within 24h; if not ratified, auto-revert + actor permissions frozen; declarer cannot be executor (separation of detection/response). Dead creator: after succession_unreachable_days, supermajority of remaining gatekeepers assumes creator privileges with 30-day cooling. Signer-set for shared memories is immutable after creation (anti-collusion).",
+          "extends": [
+            "A4",
+            "A12",
+            "A13"
+          ],
+          "constrained_by": [
+            "A15"
+          ],
+          "metric": "tombstone_preserved = true for all PURGE ops; ratification_within_24h = true for all security exceptions; deprecate_count_per_actor <= 5/month",
+          "invariant": "No memory operation destroys provenance metadata. PURGE preserves tombstone with original hash, creator, timestamp, and involved gatekeepers.",
+          "cooling_period": "ceil(4/(zeta * omega_n)) + 1 = 3 days = 72h. Derived from H(s) settling time. DELETE confirmation minimum: rise_time = ceil(1.8/omega_n) = 18h. FLAG escalation: 2 * settling_time = 5 days. NTP-HARDENED: all timers require NTP-synced timestamps with 5% grace window. Architect signs timestamp on cooling start/end events. OTS provides independent time anchor immune to local clock manipulation.",
+          "operations": {
+            "DEPRECATE": {
+              "authorization": "creator (unilateral)",
+              "damping": "overdamped (zeta > 1)",
+              "conjugate_pair": false,
+              "reversible": true,
+              "rate_limit": "5/month per actor OR 2% of actor's active memories (whichever is greater). Scales with project maturity."
+            },
+            "DELETE": {
+              "authorization": "creator + conjugate pair (writer + co-orchestrator)",
+              "damping": "system zeta = 0.612",
+              "conjugate_pair": true,
+              "reversible": false,
+              "ots_required": true
+            },
+            "PURGE": {
+              "authorization": "all involved gatekeepers (multi-sig)",
+              "damping": "undamped — procedural damping injected (cooling + multi-sig)",
+              "conjugate_pair": true,
+              "cooling_period_hours": 72,
+              "reversible": false,
+              "ots_required": true,
+              "tombstone_required": true
+            },
+            "FLAG": {
+              "authorization": "architect (AUDIT role)",
+              "effect": "accelerated decay via A13, not deletion",
+              "appeal": "creator refreshes within 5 days",
+              "escalation": "if unaddressed after 5 days, escalates to multi-gatekeeper DELETE vote",
+              "rate_limit": "2/month per Architect. Requires cryptographic evidence (hash of alleged violation). False positive penalty: if FLAG is overturned by governor+witness review, flagging actor receives temporary AUDIT suspension (7 days). Prevents FLAG-based DoS against active Owners."
+            }
+          },
+          "security_exception": {
+            "trigger": "Enumerated leak types (versioned list, append-only): (1) credential exposure (API keys, tokens, passwords), (2) PII leak (names, emails, IDs in public channel), (3) classified content in public channel (CONFIDENTIAL in PUBLIC repo/API), (4) LGPD/GDPR 'direito ao esquecimento' (legally compelled erasure). List version: 1.0. New types require governor approval + A4 gate.",
+            "execution": "immediate, but declarer != executor",
+            "ratification": "second party must ratify within 24h",
+            "failure_to_ratify": "auto-revert + actor permissions frozen pending review",
+            "audit": "MANDATORY immutable trail (OTS + mapper entry + A12 provenance). Every invocation logged regardless of outcome. Tamper-proof by design (append-only + OTS).",
+            "ratification_fallback": "If no 2nd party available within 24h (team size 1-2): architect veto OR supermajority of available gatekeepers. If freeze persists 48h without ratification: automatic escalation to Architect (AUDIT role) for emergency unfreeze with OTS duplo + public audit log. Prevents self-inflicted DoS in minimal teams.",
+            "unfreeze_mechanism": "Frozen permissions restored by: (a) successful ratification by 2nd party, OR (b) governor + 1 witness consensus, OR (c) 72h auto-unfreeze with full audit trail preserved.",
+            "legal_note": "A19 does not override external legal obligations (subpoena, LGPD Art. 18, GDPR Art. 17, court orders). Legal compulsion is a valid trigger for emergency action. Compliance with law takes precedence over protocol cooling periods. Document the legal basis in the audit trail.",
+            "legal_override": {
+              "description": "SEIF protocol does NOT override external legal obligations (LGPD Art. 18, GDPR Art. 17, subpoenas, court orders). Legal compulsion is a valid and priority trigger for emergency action.",
+              "mechanism": "2-of-3 consensus (Architect + Governor + Witness) with: (a) documented legal basis (order number, authority, date), (b) automatic ratification via judicial log, (c) tombstone ALWAYS preserved (legal deletion removes content, not provenance record), (d) cooling period waived when legal deadline < 72h.",
+              "note": "Compliance with law takes precedence over protocol cooling periods. The protocol ensures traceability of the legal action itself."
+            }
+          },
+          "succession": {
+            "unreachable_days": 30,
+            "mechanism": "supermajority of remaining gatekeepers",
+            "cooling_period_days": 30,
+            "note": "Addresses dead-creator lockout. Creator's signing key loss does not permanently lock memories."
+          },
+          "anti_collusion": {
+            "signer_set_immutable": true,
+            "note": "The set of 'involved humans' for a shared memory is fixed at creation time and cannot be modified to exclude gatekeepers post-hoc."
+          },
+          "origin": "Session 14h (2026-04-02): André identified governance paradox (sovereign exception). 3-agent debate: clean mirror (governance theory), protocol-loaded (H(s) mapping), adversarial (red team). Security exception hardened after red team identified it as CRITICAL vulnerability. Cooling period derived from H(s) settling time. Tombstone requirement resolves PURGE vs A15 conflict. Grok team (Harper, Benjamin, Lucas) validated via SEIF seed-based briefing — first real inter-AI team interaction without shared full context. 85% threat coverage confirmed across 14 total attack vectors.",
+          "evidence": "3-agent consensus: clean mirror confirmed known governance pattern, protocol-loaded mapped to H(s) damping gradient, adversarial found 7 attack vectors (all addressed). Key insight: governance makes abuse detectable and attributable, not impossible.",
+          "proposed_by": "andre",
+          "validated_by": [
+            "claude-opus-4-6 (3 agents: clean mirror, protocol-loaded, adversarial)",
+            "grok (vigilant, co-orchestrator, 2026-04-02)",
+            "grok-team (Harper, Benjamin, Lucas — 7-scenario red team simulation, 2026-04-02)"
+          ],
+          "status": "active",
+          "known_threats": {
+            "version": "1.0",
+            "identified_by": "grok (vigilant, 2026-04-02)",
+            "threats": [
+              {
+                "id": "clock_skew",
+                "severity": "MEDIUM",
+                "description": "Time manipulation attacks on 24h/72h/30d cooling periods",
+                "mitigation": "NTP-hardened timestamps + 5% grace window on all timers. Architect signs timestamp on cooling events. OTS as independent anchor. Validated by Grok team (Lucas, Cenário 5)."
+              },
+              {
+                "id": "flag_dos",
+                "severity": "MEDIUM",
+                "description": "False-positive FLAG declarations to lock creators out of their memories via accelerated decay",
+                "mitigation": "Rate-limit: 2 FLAGs/month per Architect. Requires hash evidence of violation. Auto-penalty: 7-day AUDIT suspension on overturned FLAG. Validated by Grok team (Lucas, Cenário 6)."
+              },
+              {
+                "id": "legal_compulsion",
+                "severity": "HIGH",
+                "description": "External legal orders (subpoena, LGPD, GDPR, court order) bypassing protocol governance",
+                "mitigation": "Explicit: law overrides protocol cooling. Legal override: 2-of-3 consensus + documented legal basis + tombstone preserved. LGPD/GDPR Art. 17 as enumerated trigger. Validated by Grok team (Grok+Lucas, Cenário 7)."
+              },
+              {
+                "id": "backup_resurrection",
+                "severity": "MEDIUM",
+                "description": "PURGE'd memories resurrected from backups/snapshots outside protocol control",
+                "mitigation": "PURGE tombstone includes 'do_not_restore' flag. Backup restore process must check tombstones. Restored memories require re-classification."
+              },
+              {
+                "id": "erroneous_freeze",
+                "severity": "LOW",
+                "description": "Legitimate actor frozen after failed ratification, no clear unfreeze path",
+                "mitigation": "Unfreeze: governor+witness consensus, OR 48h auto-escalation to Architect, OR 72h auto-unfreeze with full audit trail. OTS duplo on unfreeze event. Validated by Grok team (Harper, Cenário 1)."
+              },
+              {
+                "id": "key_rotation_signer",
+                "severity": "MEDIUM",
+                "description": "Signer in immutable signer-set loses key after years, blocking PURGE consensus",
+                "mitigation": "Key rotation allowed if: old key signs new key (chain of trust), OR succession mechanism (30-day unreachable + supermajority)."
+              },
+              {
+                "id": "soft_purge_combo",
+                "severity": "HIGH",
+                "description": "Combined DEPRECATE + FLAG abuse to effectively purge without triggering PURGE controls",
+                "mitigation": "Combined rate limit: if same memory receives DEPRECATE + FLAG within 30 days from different actors, escalate to governor review. Anti-pattern detection."
+              }
+            ]
+          }
         }
       ]
     },
@@ -414,7 +591,14 @@
       "layers": {
         "L1_self_declaration": {
           "description": "Every node declares identity when joining a session.",
-          "fields": ["name", "role", "strengths", "limits", "mission", "circuit_state"],
+          "fields": [
+            "name",
+            "role",
+            "strengths",
+            "limits",
+            "mission",
+            "circuit_state"
+          ],
           "rule": "Any node that cannot fill all fields MUST ask before acting. Amnesia = stop and request context.",
           "format": "SELF-AWARENESS — [Name]\n- Role: ...\n- Strengths: ...\n- Limits: ...\n- Mission: ...\n- Circuit state: ..."
         },
