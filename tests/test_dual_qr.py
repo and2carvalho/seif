@@ -1,16 +1,15 @@
 """Tests for Dual-Layer QR Generator and QR Decoder/Verification Loop."""
-import sys
 import tempfile
 from pathlib import Path
+import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-try:
-    from seif.generators.dual_qr import generate_dual_qr, save_dual_qr, _compute_seif_hash
-    from seif.analysis.qr_decoder import decode_qr_image, verify, VerificationLevel
-    from seif.core.resonance_gate import HarmonicPhase
-except ImportError as _e:
-    print(f"SKIP test_dual_qr: {_e}")
-    sys.exit(0)
+import pytest
+pytest.importorskip("qrcode")
+
+from seif.generators.dual_qr import generate_dual_qr, save_dual_qr, _compute_seif_hash
+from seif.analysis.qr_decoder import decode_qr_image, verify, VerificationLevel
+from seif.core.resonance_gate import HarmonicPhase
 
 
 # --- Generation tests ---

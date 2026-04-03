@@ -1,19 +1,18 @@
 """Tests for Context QR — .seif module encoding as QR sequences + round-trip."""
-import sys
 import json
 import tempfile
 from pathlib import Path
+import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-try:
-    from seif.context.context_qr import (
-        encode_module, save_sequence, decode_sequence, describe,
-        _build_chunk_payload, _parse_chunk_payload,
-    )
-    from seif.context.context_manager import create_module, save_module, SeifModule
-except ImportError as _e:
-    print(f"SKIP test_context_qr: {_e}")
-    sys.exit(0)
+import pytest
+pytest.importorskip("qrcode")
+
+from seif.context.context_qr import (
+    encode_module, save_sequence, decode_sequence, describe,
+    _build_chunk_payload, _parse_chunk_payload,
+)
+from seif.context.context_manager import create_module, save_module, SeifModule
 
 DEFAULTS_DIR = Path(__file__).resolve().parent.parent / "data" / "defaults"
 

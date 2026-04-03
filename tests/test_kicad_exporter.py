@@ -5,18 +5,17 @@ import os
 import tempfile
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-try:
-    from seif.generators.kicad_exporter import (
-        export_kicad_pcb,
-        _generate_pcb_content,
-        _generate_manhattan_variant,
-    )
-    from seif.generators.circuit_generator import (
-        CircuitLayout, TraceSegment, PadDef, BOARD_SIZE_MM,
-    )
-except ImportError as _e:
-    print(f"SKIP test_kicad_exporter: {_e}")
-    sys.exit(0)
+import pytest
+pytest.importorskip("seif.generators.kicad_exporter", reason="KiCad exporter not available")
+
+from seif.generators.kicad_exporter import (
+    export_kicad_pcb,
+    _generate_pcb_content,
+    _generate_manhattan_variant,
+)
+from seif.generators.circuit_generator import (
+    CircuitLayout, TraceSegment, PadDef, BOARD_SIZE_MM,
+)
 from seif.core.resonance_gate import HarmonicPhase
 
 

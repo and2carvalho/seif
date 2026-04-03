@@ -12,11 +12,10 @@ from io import StringIO
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-try:
-    from seif.cli.cli import cmd_init  # noqa: F401 — validate import chain
-except ImportError as _e:
-    print(f"SKIP test_init: {_e}")
-    sys.exit(0)
+import pytest
+pytest.importorskip("seif.cli.cli", reason="seif CLI not installed")
+
+from seif.cli.cli import cmd_init  # noqa: F401 — validate import chain
 
 
 def _create_single_project():
