@@ -272,7 +272,12 @@ def decode_sequence(images: list) -> ReconstructResult:
     Returns:
         ReconstructResult with reconstructed SeifModule.
     """
-    from seif.analysis.qr_decoder import decode_qr_image
+    try:
+        from seif.analysis.qr_decoder import decode_qr_image
+    except ImportError:
+        raise ImportError(
+            "QR decoding requires seif-engine. Install with: pip install seif-engine"
+        )
 
     decoded_chunks: dict[int, tuple[int, str, bytes]] = {}
     expected_total = None

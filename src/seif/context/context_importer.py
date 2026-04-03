@@ -17,7 +17,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-from seif.bridge.ai_bridge import send, detect_backends
 from seif.core.resonance_gate import evaluate
 from seif.core.resonance_encoding import encode_phrase
 

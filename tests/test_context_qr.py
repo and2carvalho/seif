@@ -108,10 +108,11 @@ def test_save_sequence():
             ctx_qr.OUTPUT_DIR = original_dir
 
 
-# --- Round-trip tests ---
+# --- Round-trip tests (require seif-engine for QR decoding) ---
 
 def test_round_trip_small():
     """Encode → images → decode → verify."""
+    pytest.importorskip("seif.analysis.qr_decoder", reason="QR decode requires seif-engine")
     path = _create_temp_module(100)
     seq = encode_module(path, with_overlay=False)
 
@@ -127,6 +128,7 @@ def test_round_trip_small():
 
 def test_round_trip_preserves_summary():
     """Summary text survives encode → decode round-trip."""
+    pytest.importorskip("seif.analysis.qr_decoder", reason="QR decode requires seif-engine")
     path = _create_temp_module(150)
 
     # Read original

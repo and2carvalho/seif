@@ -22,7 +22,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-from seif.bridge.ai_bridge import send, detect_backends
 from seif.context.context_manager import load_module, contribute_to_module
 from seif.analysis.quality_gate import assess
 
