@@ -3015,6 +3015,11 @@ def main():
                         help="Cycle name for --cycle new")
     parser.add_argument("--cycle-parent", metavar="PARENT",
                         help="Parent cycle for --cycle new (auto-detected if omitted)")
+    parser.add_argument("--identity-scan", metavar="TARGET",
+                        nargs="?", const="local",
+                        help="Scan resonance identities. TARGET: 'local' (default) or SSH host e.g. 'Air-M1'")
+    parser.add_argument("--identity-scan-path", metavar="PATH",
+                        help="Remote path for --identity-scan (default: ~/Documents/seif-admin/seif-context/modules)")
 
     args = parser.parse_args()
 
@@ -3173,6 +3178,27 @@ def main():
             print(cycle_new(args.cycle_name, args.cycle_parent, ctx_repo))
         elif action == "full-circle":
             print(cycle_full_circle(ctx_repo))
+        return
+
+    if args.identity_scan is not None:
+        try:
+            from seif_engine.identity.scanner import scan_workspace, format_scan_report
+        except ImportError:
+            print("⚠  seif-engine not available — identity scanner requires the engine.")
+            return
+        target = args.identity_scan or "local"
+        local_scan = scan_workspace(machine="mini-m4")
+        if target == "local":
+            print(format_scan_report(local_scan))
+        else:
+            remote_path = getattr(args, "identity_scan_path", None) or \
+                "~/Documents/seif-admin/seif-context/modules"
+            remote_scan = scan_workspace(
+                machine="air-m1",
+                ssh_host=target,
+                remote_path=remote_path,
+            )
+            print(format_scan_report(local_scan, remote_scan))
         return
 
     if args.fingerprint_verify:
