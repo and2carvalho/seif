@@ -88,6 +88,7 @@ SEIF_CONTEXT_MODULES  # Remote path for --identity-scan (default: ~/seif-admin/s
 2. **WORKSPACE commands read identity from profile** — `name`, `github_username` come from `~/.seif/profile.json`.
 3. **PRODUCT commands require seif-engine** — they fail gracefully if the engine is not installed.
 4. **No hardcoded names** — `bigpickle`, `and2carvalho`, `mini-m4`, `Air-M1`, `~/Documents/seif-admin` do not appear in public code.
+5. **Agent roles are workspace-owner config**, not product defaults. `_DEFAULT_ROLES` uses universally available agents (`copilot`, `claude`, `grok`). Owners override with `seif --agents-set orchestrator=<their-agent>` — stored in `agent-roles-v1.seif`, never distributed.
 
 ---
 

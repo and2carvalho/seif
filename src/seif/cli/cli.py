@@ -2763,7 +2763,7 @@ _DEFAULT_ROLES = {
     "writer":       {"agent": "copilot",   "fallback": "claude"},
     "vigilant":     {"agent": "claude",    "fallback": "copilot"},
     "sentinel":     {"agent": "claude",    "fallback": "grok"},
-    "orchestrator": {"agent": "opencode",  "fallback": "copilot"},
+    "orchestrator": {"agent": "copilot",   "fallback": "claude"},
     "researcher":   {"agent": "grok",      "fallback": "gemini"},
 }
 _KNOWN_AGENTS = ["copilot", "claude", "grok", "gemini", "opencode", "deepseek", "cursor", "windsurf"]
