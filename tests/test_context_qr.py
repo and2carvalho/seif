@@ -191,7 +191,7 @@ if __name__ == "__main__":
     import inspect
     tests = [obj for name, obj in inspect.getmembers(sys.modules[__name__])
              if inspect.isfunction(obj) and name.startswith("test_")]
-    passed = failed = 0
+    passed = failed = skipped = 0
     for fn in sorted(tests, key=lambda f: f.__name__):
         try:
             fn()
@@ -200,5 +200,9 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"  ✗ {fn.__name__}: {e}")
             failed += 1
-    print(f"\n{passed} passed, {failed} failed")
+        except BaseException as e:
+            # pytest.skip.Exception inherits BaseException — treat as skip
+            print(f"  ~ {fn.__name__}: skipped ({e})")
+            skipped += 1
+    print(f"\n{passed} passed, {failed} failed, {skipped} skipped")
     sys.exit(1 if failed else 0)
