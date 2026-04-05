@@ -471,6 +471,19 @@
             ]
           },
           "status": "active"
+        },
+        {
+          "id": "ai_maestro_election",
+          "rule": "In multi-AI circuits, one AI is elected maestro (coordinator). The maestro distributes human commands, detects divergence between AIs, and escalates to the human only when AIs disagree. The human is conductor, not approver of every note.",
+          "metric": "human_relay_count = 0 (human never manually relays between AIs)",
+          "origin": "Session 18 (2026-04-05): André identified that both AIs asking human for permission broke orchestration flow. First Claude↔Copilot collaborative delivery (13 commits, 4 repos) proved convergence without human relay.",
+          "election_criteria": "The AI on the orchestrator machine (source of truth for sync, owner of bridge infrastructure) is the default maestro. Writer AI notifies maestro of completions via relay bus. Maestro escalates to human only on divergence.",
+          "proposed_by": "andre",
+          "validated_by": [
+            "claude-opus-4-6 (writer, Air M1)",
+            "github-copilot (maestro, Mini M4)"
+          ],
+          "status": "active"
         }
       ]
     },
