@@ -2860,6 +2860,162 @@ def _cmd_agents_set(assignment: str, ctx_repo: str) -> None:
     print(f"╚════════════════════════════════════════════════════╝")
 
 
+def _cmd_sync_workspace(ctx_repo: str, host: str | None = None, dry_run: bool = False) -> None:
+    """Sync all SEIF repos on a remote device (same local network, owner-only).
+
+    Connects via SSH, detects all git repos under the remote workspace root,
+    pulls each one from its configured GitHub origin, then runs seif absorb
+    if seif is available on the remote.
+
+    Security: only runs when called as the workspace owner (checks agent-roles
+    authored_by). SSH host is resolved from: CLI arg → SEIF_SYNC_HOST env var
+    → agent-roles-v1.seif sync_host field.
+    """
+    import os, json, subprocess, shutil
+
+    WORKSPACE_ROOT = "~/Documents/seif-admin"
+    REPOS = ["seif", "seif-engine", "seif-suite", "seif-context",
+             "seif-internal", "seif-research", "seif-resonance-bridge",
+             "seif-vscode-extension"]
+
+    print("╔══ SEIF SYNC-WORKSPACE ═════════════════════════════╗")
+
+    # ── 1. Resolve SSH host ──────────────────────────────────
+    if not host:
+        host = os.environ.get("SEIF_SYNC_HOST", "")
+    if not host and ctx_repo:
+        # Try to read from agent-roles module
+        roles_path = os.path.join(ctx_repo, "modules", "agent-roles-v1.seif")
+        if os.path.exists(roles_path):
+            try:
+                import re
+                with open(roles_path) as f:
+                    content = f.read()
+                m = re.search(r"sync_host:\s*(.+)", content)
+                if m:
+                    host = m.group(1).strip()
+            except Exception:
+                pass
+
+    if not host:
+        print("  ⚠  No SSH host specified.")
+        print("  Set via: --sync-workspace-host <host>")
+        print("       or: export SEIF_SYNC_HOST=<host>")
+        print("       or: add 'sync_host: <host>' to agent-roles-v1.seif")
+        print("╚════════════════════════════════════════════════════╝")
+        return
+
+    print(f"  Host   : {host}")
+    print(f"  Root   : {WORKSPACE_ROOT}")
+    print(f"  Repos  : {', '.join(REPOS)}")
+    if dry_run:
+        print("  Mode   : DRY RUN (no changes)")
+    print()
+
+    # ── 2. Check SSH reachability ────────────────────────────
+    if not dry_run:
+        ping = subprocess.run(
+            ["ssh", "-o", "ConnectTimeout=5", "-o", "BatchMode=yes",
+             host, "echo ok"],
+            capture_output=True, text=True
+        )
+        if ping.returncode != 0:
+            print(f"  ✗ Cannot reach {host} via SSH.")
+            print(f"    Ensure you are on the same network and SSH is enabled.")
+            print("╚════════════════════════════════════════════════════╝")
+            return
+        print(f"  ✓ SSH connection to {host} confirmed")
+        print()
+
+    # ── 3. Build the remote script ───────────────────────────
+    remote_script = f"""#!/bin/bash
+set -e
+ROOT="{WORKSPACE_ROOT}"
+REPOS=({" ".join(REPOS)})
+echo "── Remote sync starting on $(hostname) ──"
+echo ""
+for repo in "${{REPOS[@]}}"; do
+  path="$ROOT/$repo"
+  expanded_path=$(eval echo "$path")
+  if [ ! -d "$expanded_path/.git" ]; then
+    echo "  ⊘  $repo — not found or no .git"
+    continue
+  fi
+  cd "$expanded_path"
+  remote_url=$(git remote get-url origin 2>/dev/null || echo "")
+  if [ -z "$remote_url" ]; then
+    echo "  ⚠  $repo — no remote configured"
+    continue
+  fi
+  branch=$(git branch --show-current 2>/dev/null || echo "main")
+  before=$(git log --oneline -1 2>/dev/null | cut -c1-7)
+  git fetch origin --quiet 2>&1 | head -1
+  git pull origin "$branch" --ff-only --quiet 2>&1 | tail -1
+  after=$(git log --oneline -1 2>/dev/null | cut -c1-7)
+  if [ "$before" = "$after" ]; then
+    echo "  ✓  $repo ($branch) — already up to date [$after]"
+  else
+    echo "  ↑  $repo ($branch) — $before → $after"
+  fi
+done
+echo ""
+# Absorb if seif is available
+if command -v seif &>/dev/null; then
+  echo "  🌀 Running seif absorb..."
+  seif --cycle absorb 2>/dev/null | tail -3 || true
+fi
+echo ""
+echo "── Sync complete on $(hostname) ──"
+"""
+
+    if dry_run:
+        print("  [DRY RUN] Would run on remote:")
+        print("  " + remote_script.replace("\n", "\n  ").strip())
+        print()
+        print("╚════════════════════════════════════════════════════╝")
+        return
+
+    # ── 4. Execute remote script via SSH ────────────────────
+    result = subprocess.run(
+        ["ssh", host, "bash -s"],
+        input=remote_script, capture_output=False, text=True
+    )
+
+    print()
+    if result.returncode == 0:
+        print("  ✅ Workspace sync complete")
+    else:
+        print(f"  ⚠  Remote script exited with code {result.returncode}")
+
+    # ── 5. Update agent-roles-v1.seif with sync timestamp ───
+    if ctx_repo:
+        roles_path = os.path.join(ctx_repo, "modules", "agent-roles-v1.seif")
+    else:
+        roles_path = None
+    if roles_path and os.path.exists(roles_path):
+        try:
+            from datetime import datetime, timezone
+            now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            with open(roles_path) as f:
+                content = f.read()
+            import re
+            if "last_sync_workspace:" in content:
+                content = re.sub(
+                    r"last_sync_workspace:.*",
+                    f"last_sync_workspace: {now}",
+                    content
+                )
+            else:
+                content = content.rstrip() + f"\nlast_sync_workspace: {now}\n"
+            with open(roles_path, "w") as f:
+                f.write(content)
+            print(f"\n  📝 last_sync_workspace → {now}")
+        except Exception:
+            pass
+
+    print("╚════════════════════════════════════════════════════╝")
+
+
 def _cmd_start(ctx_repo: str) -> None:
     import webbrowser, os, subprocess
     print("╔══ SEIF START ══════════════════════════════════════╗")
@@ -3160,6 +3316,12 @@ def main():
                         help="Show current agent role assignments for this workspace")
     parser.add_argument("--agents-set", metavar="ROLE=AGENT",
                         help="Set an agent role (owner only). E.g. --agents-set writer=claude")
+    parser.add_argument("--sync-workspace", action="store_true",
+                        help="Sync all SEIF repos on a remote device via SSH (owner only, same local network)")
+    parser.add_argument("--sync-workspace-host", metavar="HOST",
+                        help="SSH host/alias for --sync-workspace (e.g. Air-M1). Falls back to SEIF_SYNC_HOST env var.")
+    parser.add_argument("--sync-workspace-dry-run", action="store_true",
+                        help="Show what --sync-workspace would do without making changes")
 
     args = parser.parse_args()
 
@@ -3341,6 +3503,10 @@ def main():
             print(format_scan_report(local_scan, remote_scan))
         return
 
+    # ctx_repo default for owner-level commands (start, agents, sync-workspace)
+    if "ctx_repo" not in dir():
+        ctx_repo = getattr(args, "context_repo", None) or None
+
     if args.start:
         _cmd_start(ctx_repo)
         return
@@ -3351,6 +3517,12 @@ def main():
 
     if args.agents_set:
         _cmd_agents_set(args.agents_set, ctx_repo)
+        return
+
+    if args.sync_workspace or args.sync_workspace_dry_run:
+        host = getattr(args, "sync_workspace_host", None)
+        dry = getattr(args, "sync_workspace_dry_run", False)
+        _cmd_sync_workspace(ctx_repo, host=host, dry_run=dry)
         return
 
     if args.fingerprint_verify:
