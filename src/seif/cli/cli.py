@@ -2618,6 +2618,99 @@ def cmd_sign_all(directory: str):
         print(f"Error: {e}")
 
 
+def cmd_onboard():
+    """Guided first-run: profile → boot-check → cycle init."""
+    import json
+
+    _SEP = "─" * 52
+
+    print()
+    print("╔══ SEIF ONBOARDING ═══════════════════════════════╗")
+    print("   Welcome. Let's set up your workspace in 3 steps.")
+    print("   You can re-run this anytime: seif --onboard")
+    print(f"╚{_SEP}╝")
+    print()
+
+    # ── Step 1: Profile ─────────────────────────────────────
+    print("▶ STEP 1 — Your Profile  (~/.seif/profile.json)")
+    print(_SEP)
+    try:
+        from seif.context.nucleus import load_profile, init_profile
+        from seif.data.paths import get_profile_path
+        existing = load_profile()
+        profile_exists = bool(existing.get("name"))
+        if profile_exists:
+            print(f"  ✅ Profile found: {existing.get('name')} ({existing.get('github_username', 'no github')})")
+            print(f"     Backend: {existing.get('default_backend', 'claude')}")
+            try:
+                edit = input("  Edit profile? [y/N] ").strip().lower()
+            except (EOFError, KeyboardInterrupt):
+                edit = "n"
+        else:
+            print("  No profile yet. Let's create one.")
+            edit = "y"
+
+        if edit == "y":
+            try:
+                name = input("  Your name [press Enter to skip]: ").strip()
+                github = input("  GitHub username [press Enter to skip]: ").strip()
+                backend = input("  Default AI backend (claude/grok/gemini/opencode) [claude]: ").strip() or "claude"
+                lang = input("  Language (en/pt/es/fr) [en]: ").strip() or "en"
+            except (EOFError, KeyboardInterrupt):
+                print("\n  Skipped — run `seif --profile init` to set up later.")
+                name = github = ""
+                backend = "claude"
+                lang = "en"
+            path = init_profile(name=name, email="", github_username=github,
+                                default_backend=backend, language=lang)
+            print(f"  ✅ Profile saved: {path}")
+    except ImportError:
+        print("  ⚠  Profile module not available — run: pip install seif-cli[full]")
+    print()
+
+    # ── Step 2: Boot check ───────────────────────────────────
+    print("▶ STEP 2 — Backend Check")
+    print(_SEP)
+    try:
+        from seif.bridge.ai_bridge import detect_backends
+        available = detect_backends()
+        if available:
+            print(f"  ✅ Backends detected: {', '.join(available)}")
+        else:
+            print("  ⚠  No AI backends detected.")
+            print("     Install one to use --consult and --quality-gate:")
+            print("       Claude CLI : npm install -g @anthropic-ai/claude-code")
+            print("       Grok       : set GROK_API_KEY env var")
+            print("       Gemini     : set GEMINI_API_KEY env var")
+    except Exception:
+        print("  ⚠  Backend detection skipped.")
+    print()
+
+    # ── Step 3: First quality gate ───────────────────────────
+    print("▶ STEP 3 — Try It")
+    print(_SEP)
+    print("  Run a quick resonance check on any text:")
+    print()
+    print('    seif "The SEIF protocol maintains context coherence." --gate')
+    print()
+    print("  Or check system health:")
+    print()
+    print("    seif --health")
+    print()
+
+    # ── Footer ───────────────────────────────────────────────
+    print("╔══ ONBOARDING COMPLETE ════════════════════════════╗")
+    print("   seif-cli is ready. ζ=0.6124")
+    print()
+    print("   Docs   : https://seifprotocol.com/docs")
+    print("   GitHub : https://github.com/and2carvalho/seif")
+    print("   PyPI   : https://pypi.org/project/seif-cli/")
+    print(f"╚{_SEP}╝")
+    print()
+    print("· ○ ● ○ ·   enoch seed lives.  ζ=0.6124   🌀")
+    print()
+
+
 def cmd_profile(args):
     """Manage ~/.seif/profile.json."""
     import json
@@ -3226,6 +3319,8 @@ def main():
                         help="Maximum embeddings per session (default: 100)")
     parser.add_argument("--streaming-identity", metavar="FILE",
                         help="Identity block JSON file for streaming session")
+    parser.add_argument("--onboard", action="store_true",
+                        help="Guided first-run setup: profile → backend check → try it")
     parser.add_argument("--boot-check", action="store_true",
                         help="Run boot check across multiple LLMs")
     parser.add_argument("--boot-to", nargs="+", metavar="BACKEND",
@@ -3338,6 +3433,10 @@ def main():
     # ── Personal Nucleus commands ──
     if args.profile:
         cmd_profile(args)
+        return
+
+    if getattr(args, "onboard", False):
+        cmd_onboard()
         return
 
     if args.sources:
