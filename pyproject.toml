@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "seif-cli"
-version = "0.1.2"
-description = "Measure AI output quality, protect sensitive data, and build multi-AI consensus. Works with any LLM."
+version = "0.3.1"
+description = "Measure AI output quality, protect sensitive data, watch your AI environment resonate. Quality Gate, Classification, Sentinel & Auto-Healing, SEIF OS."
 readme = "README.md"
 license = {text = "CC-BY-NC-SA-4.0"}
 requires-python = ">=3.11"
@@ -15,7 +15,8 @@ authors = [
 keywords = [
     "ai-quality", "llm-guardrails", "ai-consensus", "data-classification",
     "context-management", "ai-safety", "multi-ai", "quality-gate",
-    "prompt-evaluation", "ai-grounding",
+    "prompt-evaluation", "ai-grounding", "resonance", "sentinel",
+    "self-healing", "seif-os", "circuit-state", "ai-observability",
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
