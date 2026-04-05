@@ -2755,6 +2755,140 @@ def cmd_extract(path: str, context_repo: str = None,
         print("No content to extract (all files filtered by classification).")
 
 
+# ── Agent Roles & Start ─────────────────────────────────────────────────────
+
+_AGENT_ROLES_FILE = "agent-roles-v1.seif"
+_DEFAULT_ROLES = {
+    "writer":       {"agent": "copilot",   "fallback": "claude"},
+    "vigilant":     {"agent": "claude",    "fallback": "copilot"},
+    "sentinel":     {"agent": "claude",    "fallback": "grok"},
+    "orchestrator": {"agent": "bigpickle", "fallback": "copilot"},
+    "researcher":   {"agent": "grok",      "fallback": "gemini"},
+}
+_KNOWN_AGENTS = ["copilot", "claude", "grok", "gemini", "bigpickle", "deepseek", "cursor", "windsurf"]
+
+
+def _agent_roles_path(ctx_repo: str) -> str:
+    import os
+    return os.path.join(ctx_repo, "modules", _AGENT_ROLES_FILE)
+
+
+def _load_agent_roles(ctx_repo: str) -> dict:
+    import json, os
+    path = _agent_roles_path(ctx_repo)
+    if os.path.exists(path):
+        try:
+            with open(path) as f:
+                data = json.load(f)
+            return data.get("roles", _DEFAULT_ROLES)
+        except Exception:
+            pass
+    return dict(_DEFAULT_ROLES)
+
+
+def _save_agent_roles(ctx_repo: str, roles: dict, authored_by: str = "and2carvalho") -> None:
+    import json, os
+    from datetime import datetime, timezone
+    path = _agent_roles_path(ctx_repo)
+    module = {
+        "_instruction": "Workspace agent role assignments. Owner-only write. Propagates to all collaborators.",
+        "protocol": "SEIF-MODULE-v2",
+        "module_id": "agent-roles-v1",
+        "classification": "INTERNAL",
+        "decay_exempt": True,
+        "governance": {
+            "authored_by": authored_by,
+            "collaborator_override": False,
+            "propagates_to_all": True,
+            "note": "Only workspace-owner can write this module. All collaborators inherit these assignments."
+        },
+        "roles": roles,
+        "known_agents": _KNOWN_AGENTS,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "integrity_hash": f"agent-roles-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M')}"
+    }
+    with open(path, "w") as f:
+        json.dump(module, f, indent=2)
+
+
+def _cmd_agents_show(ctx_repo: str) -> None:
+    roles = _load_agent_roles(ctx_repo)
+    print("╔══ SEIF AGENT ROLES ═══════════════════════════════╗")
+    for role, cfg in roles.items():
+        agent = cfg.get("agent", "—") if isinstance(cfg, dict) else cfg
+        fallback = cfg.get("fallback", "—") if isinstance(cfg, dict) else "—"
+        avail = _check_agent_available(agent)
+        icon = "✅" if avail else "⚠ "
+        fb_note = f"  (fallback: {fallback})" if not avail else ""
+        print(f"  {icon} {role:<14} → {agent}{fb_note}")
+    print("╚═══════════════════════════════════════════════════╝")
+    print("  Set with: seif --agents-set ROLE=AGENT")
+    print(f"  Known agents: {', '.join(_KNOWN_AGENTS)}")
+
+
+def _check_agent_available(agent: str) -> bool:
+    """Best-effort availability check — checks if agent binary/process exists."""
+    import shutil
+    checks = {
+        "copilot": ["gh", "copilot"],
+        "claude":  ["claude"],
+        "cursor":  ["cursor"],
+        "windsurf": ["windsurf"],
+    }
+    bins = checks.get(agent, [agent])
+    return any(shutil.which(b) for b in bins)
+
+
+def _cmd_agents_set(assignment: str, ctx_repo: str) -> None:
+    if "=" not in assignment:
+        print(f"⚠  Format: ROLE=AGENT  (e.g. writer=claude)")
+        return
+    role, agent = assignment.split("=", 1)
+    role, agent = role.strip().lower(), agent.strip().lower()
+    if agent not in _KNOWN_AGENTS:
+        print(f"⚠  Unknown agent '{agent}'. Known: {', '.join(_KNOWN_AGENTS)}")
+        return
+    roles = _load_agent_roles(ctx_repo)
+    old = roles.get(role, {})
+    old_agent = old.get("agent", "—") if isinstance(old, dict) else old
+    roles[role] = {"agent": agent, "fallback": old_agent if old_agent != agent else "copilot"}
+    _save_agent_roles(ctx_repo, roles)
+    print(f"╔══ AGENT ROLE UPDATED ══════════════════════════════╗")
+    print(f"  {role:<14} → {agent}  (previous: {old_agent})")
+    print(f"  Saved to: {_agent_roles_path(ctx_repo)}")
+    print(f"  Propagates to all workspace collaborators.")
+    print(f"╚════════════════════════════════════════════════════╝")
+
+
+def _cmd_start(ctx_repo: str) -> None:
+    import webbrowser, os, subprocess
+    print("╔══ SEIF START ══════════════════════════════════════╗")
+
+    # 1. Cycle status
+    try:
+        result = subprocess.run(
+            ["python3", "-m", "seif.cli.cli", "--cycle", "status"],
+            capture_output=True, text=True, cwd=os.path.dirname(ctx_repo)
+        )
+        print(result.stdout.strip())
+    except Exception:
+        print("  ⚠  Could not load cycle status")
+
+    # 2. Agent roles
+    print()
+    _cmd_agents_show(ctx_repo)
+
+    # 3. Open Suite in browser
+    suite_url = os.environ.get("SEIF_SUITE_URL", "http://localhost:3000")
+    print(f"\n  🌐 Opening SEIF Suite: {suite_url}")
+    try:
+        webbrowser.open(suite_url)
+    except Exception:
+        print(f"  ⚠  Could not open browser. Navigate to: {suite_url}")
+
+    print("╚════════════════════════════════════════════════════╝")
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="seif",
@@ -3015,6 +3149,17 @@ def main():
                         help="Cycle name for --cycle new")
     parser.add_argument("--cycle-parent", metavar="PARENT",
                         help="Parent cycle for --cycle new (auto-detected if omitted)")
+    parser.add_argument("--identity-scan", metavar="TARGET",
+                        nargs="?", const="local",
+                        help="Scan resonance identities. TARGET: 'local' (default) or SSH host e.g. 'Air-M1'")
+    parser.add_argument("--identity-scan-path", metavar="PATH",
+                        help="Remote path for --identity-scan (default: ~/Documents/seif-admin/seif-context/modules)")
+    parser.add_argument("--start", action="store_true",
+                        help="Open SEIF Suite in browser + show cycle status + load agent roles")
+    parser.add_argument("--agents", action="store_true",
+                        help="Show current agent role assignments for this workspace")
+    parser.add_argument("--agents-set", metavar="ROLE=AGENT",
+                        help="Set an agent role (owner only). E.g. --agents-set writer=claude")
 
     args = parser.parse_args()
 
@@ -3173,6 +3318,39 @@ def main():
             print(cycle_new(args.cycle_name, args.cycle_parent, ctx_repo))
         elif action == "full-circle":
             print(cycle_full_circle(ctx_repo))
+        return
+
+    if args.identity_scan is not None:
+        try:
+            from seif_engine.identity.scanner import scan_workspace, format_scan_report
+        except ImportError:
+            print("⚠  seif-engine not available — identity scanner requires the engine.")
+            return
+        target = args.identity_scan or "local"
+        local_scan = scan_workspace(machine="mini-m4")
+        if target == "local":
+            print(format_scan_report(local_scan))
+        else:
+            remote_path = getattr(args, "identity_scan_path", None) or \
+                "~/Documents/seif-admin/seif-context/modules"
+            remote_scan = scan_workspace(
+                machine="air-m1",
+                ssh_host=target,
+                remote_path=remote_path,
+            )
+            print(format_scan_report(local_scan, remote_scan))
+        return
+
+    if args.start:
+        _cmd_start(ctx_repo)
+        return
+
+    if args.agents:
+        _cmd_agents_show(ctx_repo)
+        return
+
+    if args.agents_set:
+        _cmd_agents_set(args.agents_set, ctx_repo)
         return
 
     if args.fingerprint_verify:
