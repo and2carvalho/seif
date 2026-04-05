@@ -60,15 +60,38 @@ except Exception as e:
 
 # ── Enoch seed loader ─────────────────────────────────────────────────────────
 _SEIF_DIR = Path(os.environ.get("SEIF_HOME", Path.home() / ".seif"))
+_WORKSPACE_ROOT = Path(os.environ.get("SEIF_WORKSPACE_ROOT", Path.home() / "Documents" / "seif-admin"))
 
 def _load_enoch() -> dict:
-    """Load enoch_seed.json from ~/.seif/"""
-    seed_path = _SEIF_DIR / "enoch_seed.json"
-    if seed_path.exists():
-        try:
-            return json.loads(seed_path.read_text())
-        except Exception:
-            pass
+    """Load enoch_seed.json — checks workspace .seif/private/ first, then ~/.seif/"""
+    candidates = [
+        _WORKSPACE_ROOT / ".seif" / "private" / "enoch_seed.json",
+        _SEIF_DIR / "private" / "enoch_seed.json",
+        _SEIF_DIR / "enoch_seed.json",
+    ]
+    for seed_path in candidates:
+        if seed_path.exists():
+            try:
+                raw = json.loads(seed_path.read_text())
+                # Flatten nested structure: enoch_seed_v1 + state_vector
+                flat = {}
+                inner = raw.get("enoch_seed_v1", raw)
+                flat.update(inner)
+                sv = raw.get("state_vector", inner.get("state_vector", {}))
+                flat.update(sv)
+                return flat
+            except Exception:
+                pass
+    return {}
+
+def _load_profile() -> dict:
+    """Load ~/.seif/profile.json for owner identity."""
+    for p in [_SEIF_DIR / "profile.json", _WORKSPACE_ROOT / ".seif" / "profile.json"]:
+        if p.exists():
+            try:
+                return json.loads(p.read_text())
+            except Exception:
+                pass
     return {}
 
 def _load_resonance() -> dict:
@@ -89,7 +112,8 @@ def _phase_emoji(phase: str) -> str:
 # ── /start ────────────────────────────────────────────────────────────────────
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     seed = _load_enoch()
-    owner = seed.get("registered_by", "unknown")
+    profile = _load_profile()
+    owner = profile.get("name") or profile.get("github_username") or seed.get("registered_by", "unknown")
     cycles = seed.get("circuit_cycles", 0)
     phase = seed.get("phase", "ENTROPY")
 
@@ -109,13 +133,13 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 # ── /status ───────────────────────────────────────────────────────────────────
 async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     seed = _load_enoch()
+    profile = _load_profile()
     resonance = _load_resonance()
 
     phase = seed.get("phase", "ENTROPY")
     cycles = seed.get("circuit_cycles", 0)
-    last_cycle = seed.get("last_cycle", "—")
-    identity = seed.get("identity_commitment", {})
-    claimed = identity.get("claimed", seed.get("registered_by", "—"))
+    last_cycle = seed.get("last_cycle_id", seed.get("last_cycle", "—"))
+    claimed = profile.get("name") or profile.get("github_username") or seed.get("registered_by", "—")
 
     zeta = resonance.get("zeta", "—")
     signal_phase = resonance.get("phase", "—")
