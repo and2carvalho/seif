@@ -3,7 +3,7 @@ requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "seif"
+name = "seif-cli"
 version = "0.3.1"
 description = "Measure AI output quality, protect sensitive data, watch your AI environment resonate. Quality Gate, Classification, Sentinel & Auto-Healing, SEIF OS."
 readme = "README.md"
