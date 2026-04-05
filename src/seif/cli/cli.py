@@ -792,6 +792,7 @@ def cmd_init(root_path: str, author: str, context_repo: str = None):
     from pathlib import Path
 
     root = Path(root_path).resolve()
+    root.mkdir(parents=True, exist_ok=True)
     print(f"Initializing S.E.I.F. in: {root}")
     if context_repo:
         print(f"Context repository: {context_repo} (SCR mode)")
@@ -840,6 +841,13 @@ def cmd_init(root_path: str, author: str, context_repo: str = None):
     else:
         # Single project mode
         has_git = (root / ".git").exists()
+        if not has_git:
+            print(f"No git repo found in {root}. Initializing git...")
+            import subprocess as _sp
+            _sp.run(["git", "init", str(root)], check=True, capture_output=True)
+            print(f"  git init done.")
+            has_git = True
+
         if has_git:
             ctx = extract_git_context(str(root))
             print(f"Detected SINGLE PROJECT: {ctx.repo_name}")
@@ -868,10 +876,6 @@ def cmd_init(root_path: str, author: str, context_repo: str = None):
             print(f"  {path}")
             print(f"  Words:   {module.compressed_words}")
             print(f"  Hash:    {module.integrity_hash}")
-        else:
-            print(f"No git repo or subprojects found in {root}")
-            print(f"Run 'git init' first, or point to a workspace with subprojects.")
-            return
 
     # Install git hooks for auto-sync
     if subprojects:
@@ -2721,6 +2725,16 @@ def cmd_profile(args):
         return
 
     action = args.profile
+    # Auto-detect init when profile args are provided without explicit "init" action
+    if action in (None, "show") and any([
+        getattr(args, "profile_name", None),
+        getattr(args, "profile_email", None),
+        getattr(args, "profile_github", None),
+        getattr(args, "profile_backend", None),
+    ]):
+        action = "init"
+    if action is None:
+        action = "show"
     if action == "show":
         profile = load_profile()
         print(json.dumps(profile, indent=2, ensure_ascii=False))
@@ -3321,6 +3335,10 @@ def main():
                         help="Identity block JSON file for streaming session")
     parser.add_argument("--onboard", action="store_true",
                         help="Guided first-run setup: profile → backend check → try it")
+    parser.add_argument("--version", action="store_true",
+                        help="Show seif-cli version and exit")
+    parser.add_argument("--help-admin", action="store_true",
+                        help="Show all admin/advanced commands")
     parser.add_argument("--boot-check", action="store_true",
                         help="Run boot check across multiple LLMs")
     parser.add_argument("--boot-to", nargs="+", metavar="BACKEND",
@@ -3429,6 +3447,37 @@ def main():
                         help="Show what --sync-workspace would do without making changes")
 
     args = parser.parse_args()
+
+    # ── Version ──
+    if getattr(args, "version", False):
+        try:
+            from importlib.metadata import version as pkg_version
+            v = pkg_version("seif-cli")
+        except Exception:
+            v = "0.3.1"
+        print(f"seif-cli {v}")
+        return
+
+    # ── Help admin ──
+    if getattr(args, "help_admin", False):
+        print("seif-cli — admin commands:\n")
+        print("  --init [PATH]              Initialize .seif context (auto git init if needed)")
+        print("  --sync [PATH]              Re-sync git context")
+        print("  --quality-gate TEXT        Measure text quality (Grade A-F)")
+        print("  --compress [PATH]          Compress source code into .seif")
+        print("  --workspace [PATH]         Multi-project workspace sync")
+        print("  --profile [init|show|edit] Manage ~/.seif/profile.json")
+        print("  --sources [list|add|...]   Manage context sources")
+        print("  --onboard                  Guided first-run setup")
+        print("  --cycle ACTION             Manage SEIF cycles")
+        print("  --absorb                   Absorb session knowledge")
+        print("  --context-repo PATH        Use external SEIF Context Repository")
+        print("  --export                   Export context (PUBLIC/INTERNAL/CONFIDENTIAL)")
+        print("  --consult QUESTION         Inter-AI consultation")
+        print("  --boot-check               Run boot check across LLMs")
+        print()
+        print("  seif --help                Full argument reference")
+        return
 
     # ── Personal Nucleus commands ──
     if args.profile:
