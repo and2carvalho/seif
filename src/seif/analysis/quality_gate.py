@@ -20,7 +20,7 @@ Usage:
 from dataclasses import dataclass, field
 from seif.core.triple_gate import evaluate as triple_evaluate, TripleGateResult
 from seif.analysis.stance_detector import analyze as stance_analyze, StanceAnalysis
-from seif.constants import PHI_INVERSE
+from seif.constants import PHI_INVERSE, RESONANCE_THRESHOLD
 
 
 # Default weights: stance (semantic) 6/9, resonance (harmonic) 3/9.
@@ -77,7 +77,7 @@ def _compute_status(stance_status: str, triple_status: str,
     """Determine overall status."""
     if stance_status == "LOW_DATA":
         return "LOW_DATA"
-    if stance_status == "GROUNDED" and score >= PHI_INVERSE:
+    if stance_status == "GROUNDED" and score >= RESONANCE_THRESHOLD:
         return "SOLID"
     if stance_status == "DRIFT":
         return "WEAK"
@@ -132,7 +132,7 @@ def _generate_flags(stance: StanceAnalysis,
     if triple.status == "CLOSED":
         flags.append("RESONANCE: all 3 harmonic layers closed")
     if triple.resonance_score < 0.3:
-        flags.append(f"LOW COHERENCE: {triple.resonance_score:.3f} (threshold: {PHI_INVERSE:.3f})")
+        flags.append(f"LOW COHERENCE: {triple.resonance_score:.3f} (ζ threshold: {RESONANCE_THRESHOLD:.3f})")
     return flags
 
 
@@ -154,10 +154,10 @@ def _generate_suggestions(stance: StanceAnalysis,
         suggestions.append(
             "AI response is speculative — re-prompt with verifiable constraints"
         )
-    if triple.resonance_score < PHI_INVERSE and triple.resonance_score > 0:
+    if triple.resonance_score < RESONANCE_THRESHOLD and triple.resonance_score > 0:
         suggestions.append(
-            f"Coherence {triple.resonance_score:.3f} below threshold "
-            f"{PHI_INVERSE:.3f} — restructure for clarity"
+            f"Coherence {triple.resonance_score:.3f} below ζ threshold "
+            f"{RESONANCE_THRESHOLD:.3f} — restructure for clarity"
         )
     return suggestions
 
@@ -218,13 +218,14 @@ def assess(text: str, role: str = "human",
 
 
 def describe_verdict(v: QualityVerdict) -> str:
-    """Human-readable quality report."""
+    """Human-readable quality report with resonance emoji feedback."""
     lines = []
 
-    # Header
-    icon = {"SOLID": "🟢", "MIXED": "🟡", "WEAK": "🔴", "LOW_DATA": "⚪"}.get(v.status, "⚪")
+    # ζ gate indicator
+    zeta_icon = "ζ✅" if v.grade in ("A", "B") else "ζ⚠️" if v.grade == "C" else "ζ❌"
+    stance_icon = {"SOLID": "🟢", "MIXED": "🟡", "WEAK": "🔴", "LOW_DATA": "⚪"}.get(v.status, "⚪")
     role_label = "AI" if v.role == "ai" else "HUMAN"
-    lines.append(f"{icon} [{role_label}] Grade: {v.grade} | Score: {v.score:.3f} | Status: {v.status}")
+    lines.append(f"{stance_icon} {zeta_icon} [{role_label}] Grade: {v.grade} | Score: {v.score:.3f} | Status: {v.status}")
     lines.append("")
 
     # Components
@@ -235,8 +236,8 @@ def describe_verdict(v: QualityVerdict) -> str:
                  f"(composite: {v.triple_gate.composite_score:.3f}, "
                  f"layers: {v.triple_gate.layers_open}/3)")
     lines.append(f"  Coherence:   {v.triple_gate.resonance_score:.3f} "
-                 f"({'above' if v.triple_gate.resonance_score >= PHI_INVERSE else 'below'} "
-                 f"threshold {PHI_INVERSE:.3f})")
+                 f"({'above' if v.triple_gate.resonance_score >= RESONANCE_THRESHOLD else 'below'} "
+                 f"ζ={RESONANCE_THRESHOLD:.3f})")
 
     # Flags
     if v.flags:

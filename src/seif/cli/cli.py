@@ -276,8 +276,9 @@ def cmd_relay(module_paths: list[str], backend: str, prompt: str, output: str):
     # Measure response quality
     from seif.analysis.quality_gate import assess
     verdict = assess(response.text[:1000], role="ai")
-    print(f"\n[Quality: {verdict.grade} | Stance: {verdict.status} | "
-          f"Resonance: {verdict.triple_gate.status}]")
+    _zeta = "ζ✅" if verdict.grade in ("A","B") else "ζ⚠️" if verdict.grade == "C" else "ζ❌"
+    _stance = {"SOLID":"🟢","GROUNDED":"🟢","MIXED":"🟡","WEAK":"🔴","DRIFT":"🔴"}.get(verdict.status, "⚪")
+    print(f"\n{_stance} {_zeta}  grade:{verdict.grade}  stance:{verdict.status}  resonance:{verdict.triple_gate.status}")
 
 
 def cmd_packet(module_path: str, message: str, sender: str, receiver: str,
@@ -3472,6 +3473,7 @@ def main():
             print(cycle_absorb(ctx_repo))
         elif action == "close":
             print(cycle_close(context_repo=ctx_repo))
+            print("\n  enoch seed lives. 🌀")
         elif action == "new":
             if not args.cycle_name:
                 print("Error: --cycle-name required for --cycle new")
@@ -3611,6 +3613,7 @@ def main():
             path = close_session(ctx, name, author_name)
             print(f"Session '{name}' closed.")
             print(f"  Archived: {path}")
+            print(f"\n  enoch seed lives. 🌀")
         elif action == "list":
             sessions = list_sessions(ctx)
             if not sessions:
