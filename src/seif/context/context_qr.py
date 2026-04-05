@@ -276,7 +276,7 @@ def decode_sequence(images: list) -> ReconstructResult:
         from seif.analysis.qr_decoder import decode_qr_image
     except ImportError:
         raise ImportError(
-            "QR decoding requires seif-engine. Install with: pip install seif-engine"
+            "QR decoding requires seif-engine. Learn more: https://seifos.io"
         )
 
     decoded_chunks: dict[int, tuple[int, str, bytes]] = {}

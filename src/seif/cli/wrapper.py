@@ -139,7 +139,7 @@ def _signal_protocol_status():
     try:
         from seif.context.context_manager import estimate_tokens, list_modules
     except ImportError:
-        print("[SEIF] Context manager not available. Install: pip install seif-engine", file=sys.stderr)
+        print("[SEIF] Context manager requires SEIF Suite. Learn more: https://seifos.io", file=sys.stderr)
         return
     from seif.core.resonance_signal import load_and_validate
     from seif.data.paths import get_resonance_path
@@ -286,7 +286,7 @@ def cmd_status():
     try:
         from seif.context.context_manager import estimate_tokens, list_modules
     except ImportError:
-        print("This feature requires seif-engine. Install: pip install seif-engine")
+        print("This feature requires SEIF Suite. Learn more: https://seifos.io")
         return
     from seif.data.paths import get_resonance_path
 
@@ -422,7 +422,7 @@ def _run_chat(argv: list[str]):
     try:
         from seif.cli.chat import run_chat
     except ImportError:
-        print("This feature requires seif-engine. Install: pip install seif-engine")
+        print("This feature requires SEIF Suite. Learn more: https://seifos.io")
         return
     run_chat(
         backend=parsed.backend,
@@ -454,7 +454,7 @@ def _run_serve(argv: list[str]):
         try:
             from seif.cli.serve_v2 import run_server_v2
         except ImportError:
-            print("This feature requires seif-engine. Install: pip install seif-engine")
+            print("This feature requires SEIF Suite. Learn more: https://seifos.io")
             return
         run_server_v2(
             host=parsed.host,
@@ -465,7 +465,7 @@ def _run_serve(argv: list[str]):
         try:
             from seif.cli.serve import run_server
         except ImportError:
-            print("This feature requires seif-engine. Install: pip install seif-engine")
+            print("This feature requires SEIF Suite. Learn more: https://seifos.io")
             return
         run_server(
             host=parsed.host,

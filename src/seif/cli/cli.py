@@ -222,7 +222,7 @@ def cmd_relay(module_paths: list[str], backend: str, prompt: str, output: str):
         "gemini": "gemini_cli",
         "anthropic": "anthropic_api",
         "grok": "grok_api",
-        "bigpickle": "opencode_bigpickle",
+        "opencode": "opencode",
     }
     backend_key = backend_map.get(backend, backend)
 
@@ -332,7 +332,7 @@ def cmd_packet(module_path: str, message: str, sender: str, receiver: str,
             "gemini": "gemini_cli",
             "anthropic": "anthropic_api",
             "grok": "grok_api",
-            "bigpickle": "opencode_bigpickle",
+            "opencode": "opencode",
         }
         backend_key = backend_map.get(receiver, receiver)
 
@@ -479,7 +479,7 @@ def cmd_consensus(question: str, module_paths: list[str], backends: list[str],
         "gemini": "gemini_cli",
         "anthropic": "anthropic_api",
         "grok": "grok_api",
-        "bigpickle": "opencode_bigpickle",
+        "opencode": "opencode",
     }
 
     # Verify at least 2 backends are available
@@ -1506,7 +1506,7 @@ def cmd_consult(question: str, context_paths: list[str],
     backend_map = {
         "claude": "claude_cli", "gemini": "gemini_cli",
         "anthropic": "anthropic_api", "grok": "grok_api",
-        "bigpickle": "opencode_bigpickle",
+        "opencode": "opencode",
         "deepseek": "deepseek", "kimi": "kimi",
     }
 
@@ -1888,7 +1888,7 @@ def cmd_adversarial(question: str, context_paths: list[str],
     backend_map = {
         "claude": "claude_cli", "gemini": "gemini_cli",
         "anthropic": "anthropic_api", "grok": "grok_api",
-        "bigpickle": "opencode_bigpickle",
+        "opencode": "opencode",
     }
 
     # Resolve backend
@@ -2763,10 +2763,10 @@ _DEFAULT_ROLES = {
     "writer":       {"agent": "copilot",   "fallback": "claude"},
     "vigilant":     {"agent": "claude",    "fallback": "copilot"},
     "sentinel":     {"agent": "claude",    "fallback": "grok"},
-    "orchestrator": {"agent": "bigpickle", "fallback": "copilot"},
+    "orchestrator": {"agent": "opencode",  "fallback": "copilot"},
     "researcher":   {"agent": "grok",      "fallback": "gemini"},
 }
-_KNOWN_AGENTS = ["copilot", "claude", "grok", "gemini", "bigpickle", "deepseek", "cursor", "windsurf"]
+_KNOWN_AGENTS = ["copilot", "claude", "grok", "gemini", "opencode", "deepseek", "cursor", "windsurf"]
 
 
 def _agent_roles_path(ctx_repo: str) -> str:
@@ -2787,9 +2787,15 @@ def _load_agent_roles(ctx_repo: str) -> dict:
     return dict(_DEFAULT_ROLES)
 
 
-def _save_agent_roles(ctx_repo: str, roles: dict, authored_by: str = "and2carvalho") -> None:
+def _save_agent_roles(ctx_repo: str, roles: dict, authored_by: str = "") -> None:
     import json, os
     from datetime import datetime, timezone
+    if not authored_by:
+        try:
+            from seif.context.nucleus import load_profile
+            authored_by = load_profile().get("name", "unknown") or "unknown"
+        except Exception:
+            authored_by = "unknown"
     path = _agent_roles_path(ctx_repo)
     module = {
         "_instruction": "Workspace agent role assignments. Owner-only write. Propagates to all collaborators.",
@@ -2874,7 +2880,10 @@ def _cmd_sync_workspace(ctx_repo: str, host: str | None = None, dry_run: bool = 
     """
     import os, json, subprocess, shutil
 
-    WORKSPACE_ROOT = "~/Documents/seif-admin"
+    WORKSPACE_ROOT = os.environ.get(
+        "SEIF_WORKSPACE_ROOT",
+        str(__import__("pathlib").Path.home() / "seif-admin")
+    )
     REPOS = ["seif", "seif-engine", "seif-suite", "seif-context",
              "seif-internal", "seif-research", "seif-resonance-bridge",
              "seif-vscode-extension"]
@@ -3308,9 +3317,9 @@ def main():
                         help="Parent cycle for --cycle new (auto-detected if omitted)")
     parser.add_argument("--identity-scan", metavar="TARGET",
                         nargs="?", const="local",
-                        help="Scan resonance identities. TARGET: 'local' (default) or SSH host e.g. 'Air-M1'")
+                        help="Scan resonance identities. TARGET: 'local' (default) or SSH host e.g. 'my-laptop'")
     parser.add_argument("--identity-scan-path", metavar="PATH",
-                        help="Remote path for --identity-scan (default: ~/Documents/seif-admin/seif-context/modules)")
+                        help="Remote path for --identity-scan (default: ~/seif-admin/seif-context/modules or SEIF_CONTEXT_MODULES)")
     parser.add_argument("--start", action="store_true",
                         help="Open SEIF Suite in browser + show cycle status + load agent roles")
     parser.add_argument("--agents", action="store_true",
@@ -3320,7 +3329,7 @@ def main():
     parser.add_argument("--sync-workspace", action="store_true",
                         help="Sync all SEIF repos on a remote device via SSH (owner only, same local network)")
     parser.add_argument("--sync-workspace-host", metavar="HOST",
-                        help="SSH host/alias for --sync-workspace (e.g. Air-M1). Falls back to SEIF_SYNC_HOST env var.")
+                        help="SSH host/alias for --sync-workspace (e.g. my-laptop). Falls back to SEIF_SYNC_HOST env var.")
     parser.add_argument("--sync-workspace-dry-run", action="store_true",
                         help="Show what --sync-workspace would do without making changes")
 
@@ -3493,12 +3502,14 @@ def main():
             print("⚠  seif-engine not available — identity scanner requires the engine.")
             return
         target = args.identity_scan or "local"
-        local_scan = scan_workspace(machine="mini-m4")
+        import socket as _socket
+        _machine_id = __import__("os").environ.get("SEIF_MACHINE_ID") or _socket.gethostname()
+        local_scan = scan_workspace(machine=_machine_id)
         if target == "local":
             print(format_scan_report(local_scan))
         else:
             remote_path = getattr(args, "identity_scan_path", None) or \
-                "~/Documents/seif-admin/seif-context/modules"
+                __import__("os").environ.get("SEIF_CONTEXT_MODULES", "~/seif-admin/seif-context/modules")
             remote_scan = scan_workspace(
                 machine="air-m1",
                 ssh_host=target,

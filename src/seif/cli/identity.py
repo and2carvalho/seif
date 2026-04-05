@@ -204,7 +204,7 @@ def cmd_identity_merge(args):
 
 def main():
     if not _IDENTITY_AVAILABLE:
-        print("This feature requires seif-engine. Install: pip install seif-engine")
+        print("This feature requires SEIF Suite. Learn more: https://seifos.io")
         return
 
     parser = argparse.ArgumentParser(
