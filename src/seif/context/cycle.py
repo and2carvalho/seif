@@ -108,18 +108,32 @@ def _find_sealed_cycle(ctx: Path, cycle_id: Optional[str] = None) -> Optional[di
 
 def cycle_status(context_repo: Optional[str] = None) -> str:
     """Quick status of the open cycle."""
+    try:
+        from seif.cli.resonance_display import resonance_header, cycle_status_bar
+        _has_display = True
+    except ImportError:
+        _has_display = False
+
     ctx = _resolve_ctx(context_repo)
     open_cycle = _find_open_cycle(ctx)
     sealed = _find_sealed_cycle(ctx)
 
-    lines = ["╔══ SEIF CYCLE STATUS ══════════════════════════════╗"]
+    if _has_display:
+        subtitle = f"cycle: {open_cycle.get('cycle_id','—')}" if open_cycle else "No open cycle"
+        lines = [resonance_header("SEIF CYCLE", subtitle)]
+    else:
+        lines = ["╔══ SEIF CYCLE STATUS ══════════════════════════════╗"]
+
     if open_cycle:
         lines.append(f"  OPEN    : {open_cycle.get('cycle_id')} — {open_cycle.get('cycle_title', '')}")
         lines.append(f"  Opened  : {open_cycle.get('opened_at', 'unknown')[:19]}")
         parent = open_cycle.get('parent_cycle', '—')
         lines.append(f"  Parent  : {parent}")
         branches = open_cycle.get("branches", [])
+        done = sum(1 for b in branches if b.get("status") == "DONE")
         lines.append(f"  Branches: {len(branches)} defined")
+        if _has_display and branches:
+            lines.append(cycle_status_bar(done, len(branches)))
         for b in branches:
             status_icon = "✅" if b.get("status") == "DONE" else "⏳"
             lines.append(f"    {status_icon} [{b.get('priority','')}] {b.get('id','?')} — {b.get('title','')}")
@@ -129,7 +143,8 @@ def cycle_status(context_repo: Optional[str] = None) -> str:
     if sealed:
         lines.append(f"  SEALED  : {sealed.get('cycle_id')} (parent of current)")
 
-    lines.append("╚═══════════════════════════════════════════════════╝")
+    if not _has_display:
+        lines.append("╚═══════════════════════════════════════════════════╝")
     return "\n".join(lines)
 
 

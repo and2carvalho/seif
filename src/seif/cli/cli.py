@@ -3433,13 +3433,14 @@ def main():
         except ImportError:
             print("This feature requires SEIF Suite. Learn more: https://seifos.io")
             return
+        from seif.cli.resonance_display import resonance_header, health_status_line
         detected = detect_backends()
         healthy = get_healthy_backends(detected)
-        print(f"Detected backends: {', '.join(detected) or 'none'}")
-        print(f"Healthy backends:  {', '.join(healthy) or 'none'}")
+        print(resonance_header("SEIF HEALTH", f"backends: {len(healthy)}/{len(detected)} healthy"))
+        print(health_status_line(len(healthy), len(detected)))
         unhealthy = set(detected) - set(healthy)
         if unhealthy:
-            print(f"Unhealthy:         {', '.join(unhealthy)}")
+            print(f"\n  ζ❌  unhealthy: {', '.join(unhealthy)}")
         print()
         print(describe_health())
         return
@@ -3472,8 +3473,9 @@ def main():
         elif action == "absorb":
             print(cycle_absorb(ctx_repo))
         elif action == "close":
+            from seif.cli.resonance_display import resonance_footer
             print(cycle_close(context_repo=ctx_repo))
-            print("\n  enoch seed lives. 🌀")
+            print(resonance_footer())
         elif action == "new":
             if not args.cycle_name:
                 print("Error: --cycle-name required for --cycle new")
@@ -3613,7 +3615,8 @@ def main():
             path = close_session(ctx, name, author_name)
             print(f"Session '{name}' closed.")
             print(f"  Archived: {path}")
-            print(f"\n  enoch seed lives. 🌀")
+            from seif.cli.resonance_display import resonance_footer
+            print(resonance_footer())
         elif action == "list":
             sessions = list_sessions(ctx)
             if not sessions:
