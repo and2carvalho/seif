@@ -179,8 +179,13 @@ TF_ZETA_SQ_PHI_SQ_DEVIATION = abs(TF_ZETA_SQUARED - PHI_INVERSE_SQUARED) / PHI_I
 
 # === RESONANCE THRESHOLDS ===
 
-RESONANCE_THRESHOLD = PHI_INVERSE    # 0.618 — gate threshold
-GIZA_CORRECTION = GIZA_RATIO        # 1.01389 — biological offset multiplier
+# THRESHOLD = TF_ZETA (not PHI_INVERSE).
+# ζ = √6/4 ≈ 0.6124 is derived algebraically from H(s) = 9/(s²+3s+6).
+# φ⁻¹ ≈ 0.6180 is coincidental (0.916% deviation, confirmed by Grok 2026-04-01).
+# The quality gate threshold must be grounded in H(s), not the golden ratio.
+# This makes ζ operationally active — it drives the coherence gate at runtime.
+RESONANCE_THRESHOLD = TF_ZETA        # √6/4 ≈ 0.612372 — derived from H(s), not φ
+GIZA_CORRECTION = GIZA_RATIO         # 1.01389 — biological offset multiplier
 
 
 # === CODE COMPRESSOR CONSTANTS ===
