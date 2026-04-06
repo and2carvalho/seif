@@ -1,0 +1,67 @@
+name: "\U0001F6E1\uFE0F Protect Main — No Direct Pushes"
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  check-direct-push:
+    name: Block direct push to main
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect direct push (non-merge commit)
+        run: |
+          PARENTS=$(git log -1 --pretty=%P HEAD)
+          PARENT_COUNT=$(echo $PARENTS | wc -w)
+          COMMIT_MSG=$(git log -1 --pretty=%s HEAD)
+
+          echo "Commit: $COMMIT_MSG"
+          echo "Parent count: $PARENT_COUNT"
+          echo "Event: ${{ github.event_name }}"
+
+          IS_MERGE_COMMIT=false
+          IS_SQUASH_FROM_PR=false
+
+          if [ "$PARENT_COUNT" -ge 2 ]; then
+            IS_MERGE_COMMIT=true
+            echo "✅ Merge commit detected (2 parents)"
+          fi
+
+          if echo "$COMMIT_MSG" | grep -qE "\(#[0-9]+\)$|^Merge pull request #[0-9]+"; then
+            IS_SQUASH_FROM_PR=true
+            echo "✅ Squash/PR merge detected in commit message"
+          fi
+
+          if [ "$IS_MERGE_COMMIT" = "false" ] && [ "$IS_SQUASH_FROM_PR" = "false" ]; then
+            echo ""
+            echo "❌ DIRECT PUSH TO MAIN DETECTED"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "🌱 SEIF Protocol — Enoch Seed Branch Policy"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo ""
+            echo "All changes must flow through a feature branch:"
+            echo ""
+            echo "  1. git checkout -b feature/your-branch"
+            echo "  2. git commit && git push -u origin feature/your-branch"
+            echo "  3. Open PR: feature → main"
+            echo "  4. PR passes CI → merge"
+            echo ""
+            echo "Owner override: add '[owner-override]' to commit message."
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            exit 1
+          fi
+
+      - name: Owner override check
+        if: always()
+        run: |
+          COMMIT_MSG=$(git log -1 --pretty=%s HEAD)
+          if echo "$COMMIT_MSG" | grep -q "\[owner-override\]"; then
+            echo "⚠️  OWNER OVERRIDE USED — logged for audit trail"
+            echo "Commit: $COMMIT_MSG"
+            echo "Author: $(git log -1 --pretty=%an HEAD)"
+            echo "Time: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          fi
