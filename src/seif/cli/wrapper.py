@@ -394,6 +394,9 @@ def main():
         _run_chat(argv[1:])
     elif argv and argv[0] == "serve":
         _run_serve(argv[1:])
+    elif argv and argv[0] == "status":
+        cmd_status()
+        return
     elif _is_session_mode():
         _run_session(argv)
     else:
