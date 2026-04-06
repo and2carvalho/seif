@@ -148,9 +148,8 @@ class TestInitEmptyDir(unittest.TestCase):
 
     def test_empty_dir_no_crash(self):
         from seif.cli.cli import cmd_init
-        # Should not raise, just print message
+        # Should not raise — cmd_init now bootstraps git + .seif even on empty dirs
         cmd_init(str(self.root), author="test")
-        self.assertFalse((self.root / ".seif").exists())
 
 
 class TestInitIdempotent(unittest.TestCase):

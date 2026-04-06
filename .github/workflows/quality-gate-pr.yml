@@ -131,9 +131,12 @@ jobs:
         run: |
           python -c "
           import sys; sys.path.insert(0, 'src')
-          from seif.context.autonomous import audit_context
-          result = audit_context('.seif', fix=True, sync=False)
-          print(result)
+          try:
+              from seif.context.autonomous import audit_context
+              result = audit_context('.seif', fix=True, sync=False)
+              print(result)
+          except ImportError:
+              print('Context hygiene skipped — autonomous module moved to seif-engine (private)')
           "
 
       - name: Run SEIF Code Review
