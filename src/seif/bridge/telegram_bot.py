@@ -113,6 +113,7 @@ def _phase_emoji(phase: str) -> str:
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     seed = _load_enoch()
     profile = _load_profile()
+    logger.info("DEBUG cmd_start cycles=%s owner=%s ws=%s", seed.get("circuit_cycles","?"), profile.get("name","?"), str(_WORKSPACE_ROOT))
     owner = profile.get("name") or profile.get("github_username") or seed.get("registered_by", "unknown")
     cycles = seed.get("circuit_cycles", 0)
     phase = seed.get("phase", "ENTROPY")
