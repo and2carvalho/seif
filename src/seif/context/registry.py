@@ -182,44 +182,54 @@ def update_sync_timestamp(seif_path: str) -> None:
         save_registry(registry)
 
 
-def detect_unregistered_contexts() -> list[Path]:
-    """Scan common locations for .seif/ dirs not in the registry.
+def detect_unregistered_contexts(scan_paths: Optional[list[str]] = None) -> list[Path]:
+    """Scan specific directories for .seif/ dirs not in the registry.
 
-    Checks: home dir (1 level), Documents, Projects, Developer.
+    Only scans paths explicitly provided or configured in the registry.
+    Never scans arbitrary user directories without consent.
+
+    Args:
+        scan_paths: Explicit list of directories to scan. If None, uses
+                    paths from registry config (scan_roots field).
+                    If neither exists, returns empty list (opt-in only).
     """
     registry = load_registry()
     registered_paths = {
         str(Path(c["path"]).resolve()) for c in registry.get("contexts", [])
     }
 
-    candidates = []
-    search_roots = [
-        Path.home(),
-        Path.home() / "Documents",
-        Path.home() / "Projects",
-        Path.home() / "Developer",
-        Path.home() / "Code",
-    ]
+    # Determine scan roots: explicit > config > nothing (opt-in)
+    if scan_paths:
+        roots = [Path(p) for p in scan_paths]
+    else:
+        configured = registry.get("scan_roots", [])
+        if not configured:
+            return []
+        roots = [Path(p).expanduser() for p in configured]
 
-    for root in search_roots:
-        if not root.exists():
+    candidates = []
+    for root in roots:
+        if not root.exists() or not root.is_dir():
             continue
-        # Only scan 2 levels deep to avoid long traversals
-        for child in root.iterdir():
-            if not child.is_dir() or child.name.startswith("."):
-                continue
-            seif_dir = child / ".seif"
-            if seif_dir.is_dir() and str(seif_dir.resolve()) not in registered_paths:
-                candidates.append(seif_dir)
-            # One more level
-            try:
-                for grandchild in child.iterdir():
-                    if not grandchild.is_dir() or grandchild.name.startswith("."):
-                        continue
-                    seif_dir = grandchild / ".seif"
-                    if seif_dir.is_dir() and str(seif_dir.resolve()) not in registered_paths:
-                        candidates.append(seif_dir)
-            except PermissionError:
-                continue
+        # Only scan 2 levels deep, skip hidden dirs
+        try:
+            for child in root.iterdir():
+                if not child.is_dir() or child.name.startswith("."):
+                    continue
+                seif_dir = child / ".seif"
+                if seif_dir.is_dir() and str(seif_dir.resolve()) not in registered_paths:
+                    candidates.append(seif_dir)
+                # One more level
+                try:
+                    for grandchild in child.iterdir():
+                        if not grandchild.is_dir() or grandchild.name.startswith("."):
+                            continue
+                        seif_dir = grandchild / ".seif"
+                        if seif_dir.is_dir() and str(seif_dir.resolve()) not in registered_paths:
+                            candidates.append(seif_dir)
+                except PermissionError:
+                    continue
+        except PermissionError:
+            continue
 
     return candidates

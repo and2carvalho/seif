@@ -2889,7 +2889,7 @@ def cmd_list():
         print("  seif --absorb /path/to/code          # absorb existing project")
 
         # Check for unregistered contexts
-        unregistered = detect_unregistered_contexts()
+        unregistered = detect_unregistered_contexts([str(Path.cwd())])
         if unregistered:
             print(f"\nFound {len(unregistered)} unregistered .seif context(s):")
             for u in unregistered[:5]:
@@ -2928,7 +2928,7 @@ def cmd_list():
         print()
 
     # Check for unregistered
-    unregistered = detect_unregistered_contexts()
+    unregistered = detect_unregistered_contexts([str(Path.cwd())])
     if unregistered:
         print(f"  Found {len(unregistered)} unregistered context(s):")
         for u in unregistered[:3]:
