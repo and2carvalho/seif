@@ -7,9 +7,10 @@ Exposes key SEIF capabilities through a Telegram bot:
   /compress — compress text/code to .seif format
   /help     — command reference
 
-Free-text messages are answered with SEIF context awareness.
+Free-text messages are routed through the SEIF Resonance Gate (engine AI query).
+Owner (SEIF_OWNER_EMAIL) gets co-author persona + bypass classifier.
 
-Required env var: TELEGRAM_BOT_TOKEN
+Required env vars: TELEGRAM_BOT_TOKEN, SEIF_ENGINE_TOKEN
 """
 
 import asyncio
@@ -17,6 +18,8 @@ import json
 import logging
 import os
 import textwrap
+import urllib.request
+import urllib.error
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -247,36 +250,78 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
 
 
+# ── Engine AI query ───────────────────────────────────────────────────────────
+
+_ENGINE_URL  = os.environ.get("SEIF_ENGINE_URL", "http://api:7331")
+_ENGINE_TOKEN = os.environ.get("SEIF_ENGINE_TOKEN", "")
+_OWNER_EMAIL  = os.environ.get("SEIF_OWNER_EMAIL", "")
+
+def _query_engine(user_query: str, user_email: str = "") -> dict:
+    """POST /ai/query to the SEIF engine. Returns parsed JSON or error dict."""
+    payload = json.dumps({
+        "query": user_query,
+        "user_email": user_email or "telegram@anonymous",
+        "backend": "auto",
+    }).encode()
+    req = urllib.request.Request(
+        f"{_ENGINE_URL}/ai/query",
+        data=payload,
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {_ENGINE_TOKEN}",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            return json.loads(resp.read())
+    except urllib.error.HTTPError as e:
+        try:
+            body = json.loads(e.read())
+        except Exception:
+            body = {"error": str(e)}
+        return body
+    except Exception as e:
+        return {"error": str(e)}
+
+
 # ── Free-text handler ─────────────────────────────────────────────────────────
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    text = update.message.text or ""
-    seed = _load_enoch()
-    phase = seed.get("phase", "ENTROPY")
-    cycles = seed.get("circuit_cycles", 0)
+    text = (update.message.text or "").strip()
+    if not text:
+        return
 
-    # Basic resonance classification
-    text_lower = text.lower()
-    if any(w in text_lower for w in ["enoch", "seif", "resonance", "circuit", "ζ", "zeta"]):
-        stance = "RESONANT"
-        emoji = "⚡"
-    elif any(w in text_lower for w in ["help", "how", "what", "why", "status"]):
-        stance = "GROUNDED"
-        emoji = "◎"
-    elif "?" in text:
-        stance = "CONVERGENT"
-        emoji = "🔄"
-    else:
-        stance = "OBSERVATIONAL"
-        emoji = "〰"
+    # Determine user identity — owner gets bypass + co-author persona
+    tg_user = update.effective_user
+    user_email = _OWNER_EMAIL if (tg_user and tg_user.username == "and2carvalho") else ""
 
-    response = (
-        f"{emoji} *Stance: {stance}*\n\n"
-        f"Message received in phase `{phase}` (cycle {cycles}).\n\n"
-        f"SEIF OS is processing your input. "
-        f"For AI debate, use the dashboard at your SEIF Suite URL.\n"
-        f"For context, use /context. For status, use /status."
+    # Show typing indicator while querying engine
+    await update.message.chat.send_action("typing")
+
+    result = await asyncio.get_event_loop().run_in_executor(
+        None, _query_engine, text, user_email
     )
-    await update.message.reply_text(response, parse_mode=ParseMode.MARKDOWN)
+
+    status   = result.get("status", "ERROR")
+    persona  = result.get("persona", "user")
+    ai_resp  = result.get("ai_response") or result.get("suggestion") or result.get("error", "No response.")
+    score    = result.get("resonance_score", 0)
+    backend  = result.get("ai_backend", "")
+
+    # Format status emoji
+    status_emoji = {"CONSONANT": "◉", "OFF_SCOPE": "⊘", "DISSONANT": "⊗"}.get(status, "?")
+    persona_tag  = " · co-author" if persona == "co-author" else ""
+
+    # Truncate for Telegram (4096 char limit)
+    if len(ai_resp) > 3800:
+        ai_resp = ai_resp[:3800] + "\n\n_[truncated]_"
+
+    header = f"{status_emoji} *{status}*{persona_tag} · `{score:.2f}`"
+    if backend:
+        header += f" · _{backend}_"
+
+    reply = f"{header}\n\n{ai_resp}"
+    await update.message.reply_text(reply, parse_mode=ParseMode.MARKDOWN)
 
 
 # ── Error handler ─────────────────────────────────────────────────────────────
