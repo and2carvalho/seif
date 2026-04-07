@@ -69,3 +69,8 @@ def get_profile_path() -> Path:
 def get_sources_path() -> Path:
     """Return path to ~/.seif/sources.json."""
     return get_user_home() / "sources.json"
+
+
+def get_registry_path() -> Path:
+    """Return path to ~/.seif/registry.json (global context index)."""
+    return get_user_home() / "registry.json"

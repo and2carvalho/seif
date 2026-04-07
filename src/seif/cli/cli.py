@@ -895,6 +895,16 @@ def cmd_init(root_path: str, author: str, context_repo: str = None):
             print(f"\nGit hooks: {', '.join(h.split(' ')[0] for h in hooks)}")
             print("  .seif auto-syncs on commit, pull, and branch switch")
 
+    # Register in global registry
+    try:
+        from seif.context.registry import register_context
+        seif_dir = str(Path(context_repo).resolve()) if context_repo else str(root / ".seif")
+        entry = register_context(seif_dir)
+        print(f"\nRegistered in ~/.seif/registry.json as '{entry['name']}'")
+        print(f"  Use: seif --list          — see all your contexts")
+    except Exception as e:
+        print(f"\n  (registry: {e})")
+
     print()
     print("Done. Next steps:")
     print("  seif --quality-gate \"text\"       — measure any text")
@@ -2863,6 +2873,308 @@ def cmd_extract(path: str, context_repo: str = None,
         print("No content to extract (all files filtered by classification).")
 
 
+def cmd_list():
+    """List all registered .seif contexts (like `git remote -v` but for contexts)."""
+    from seif.context.registry import (
+        load_registry, list_contexts, detect_unregistered_contexts,
+    )
+
+    contexts = list_contexts()
+
+    if not contexts:
+        print("No .seif contexts registered yet.")
+        print()
+        print("Get started:")
+        print("  cd your-project && seif --init      # create .seif context")
+        print("  seif --absorb /path/to/code          # absorb existing project")
+
+        # Check for unregistered contexts
+        unregistered = detect_unregistered_contexts([str(Path.cwd())])
+        if unregistered:
+            print(f"\nFound {len(unregistered)} unregistered .seif context(s):")
+            for u in unregistered[:5]:
+                print(f"  {u}")
+            print("  Run seif --init in those directories to register them.")
+        return
+
+    print(f"═══ SEIF CONTEXTS ({len(contexts)}) ═══\n")
+
+    for ctx in contexts:
+        # Status indicator
+        if not ctx["exists"]:
+            icon = "✗"
+        elif ctx.get("remote"):
+            icon = "↕"
+        else:
+            icon = "●"
+
+        vis = {"private": "🔒", "public": "🔓", "local": "📁"}.get(
+            ctx.get("visibility", "private"), "?"
+        )
+
+        name = ctx.get("name", "unknown")
+        path = ctx.get("path", "?")
+        modules = ctx.get("module_count", 0)
+        remote = ctx.get("remote") or "local"
+
+        print(f"  {icon} {vis} {name:<25} {modules:>3} modules")
+        print(f"       path:   {path}")
+        if ctx.get("remote"):
+            print(f"       remote: {remote}")
+        if ctx.get("last_sync"):
+            print(f"       synced: {ctx['last_sync'][:19]}")
+        if not ctx["exists"]:
+            print(f"       ⚠  directory not found (moved or deleted?)")
+        print()
+
+    # Check for unregistered
+    unregistered = detect_unregistered_contexts([str(Path.cwd())])
+    if unregistered:
+        print(f"  Found {len(unregistered)} unregistered context(s):")
+        for u in unregistered[:3]:
+            parent = u.parent.name
+            print(f"    {parent}/ → seif --init {u.parent}")
+        if len(unregistered) > 3:
+            print(f"    ... and {len(unregistered) - 3} more")
+
+
+def cmd_status(context_repo: str = None):
+    """Show detailed status of the current .seif context."""
+    from pathlib import Path
+    import json
+
+    # Find current context
+    try:
+        from seif.context.autonomous import find_context_repo
+        ctx = context_repo or find_context_repo() or ".seif"
+    except ImportError:
+        ctx = context_repo or ".seif"
+
+    ctx_path = Path(ctx).resolve()
+
+    if not ctx_path.exists():
+        print(f"No .seif/ context found at {ctx_path}")
+        print("Run: seif --init")
+        return
+
+    print(f"═══ SEIF STATUS ═══\n")
+
+    # Registry info
+    try:
+        from seif.context.registry import load_registry, find_context_entry
+        registry = load_registry()
+        entry = find_context_entry(registry, str(ctx_path))
+        if entry:
+            print(f"  Name:       {entry.get('name', '?')}")
+            print(f"  Visibility: {entry.get('visibility', 'private')}")
+            if entry.get("remote"):
+                print(f"  Remote:     {entry['remote']}")
+            if entry.get("last_sync"):
+                print(f"  Last sync:  {entry['last_sync'][:19]}")
+        else:
+            print(f"  Name:       (not registered — run seif --init to register)")
+    except ImportError:
+        pass
+
+    print(f"  Path:       {ctx_path}")
+
+    # Config
+    config_path = ctx_path / "config.json"
+    if config_path.exists():
+        try:
+            with open(config_path) as f:
+                config = json.load(f)
+            autonomous = config.get("autonomous_context", False)
+            print(f"  Autonomous: {'ENABLED' if autonomous else 'DISABLED'}")
+            print(f"  Quality:    >= {config.get('quality_threshold', 'C')}")
+            cls_default = config.get("classification_default", "INTERNAL")
+            print(f"  Default CLS: {cls_default}")
+        except Exception:
+            pass
+
+    # Mapper stats
+    mapper_path = ctx_path / "mapper.json"
+    if mapper_path.exists():
+        try:
+            with open(mapper_path) as f:
+                mapper = json.load(f)
+            modules = mapper.get("modules", [])
+            sessions = mapper.get("session_count", 0)
+            last = mapper.get("last_session", "never")
+
+            # Classification breakdown
+            cls_counts = {}
+            for m in modules:
+                cls = m.get("classification", "INTERNAL")
+                cls_counts[cls] = cls_counts.get(cls, 0) + 1
+
+            print(f"\n  Modules:    {len(modules)}")
+            for cls in ["PUBLIC", "INTERNAL", "CONFIDENTIAL"]:
+                if cls in cls_counts:
+                    icon = {"PUBLIC": "🔓", "INTERNAL": "🔒", "CONFIDENTIAL": "⛔"}[cls]
+                    print(f"    {icon} {cls}: {cls_counts[cls]}")
+            print(f"  Sessions:   {sessions}")
+            print(f"  Last used:  {last[:19] if last != 'never' else 'never'}")
+        except Exception:
+            pass
+
+    # Projects
+    projects_dir = ctx_path / "projects"
+    if projects_dir.exists():
+        projects = [d.name for d in projects_dir.iterdir() if d.is_dir()]
+        if projects:
+            print(f"\n  Projects:   {', '.join(projects)}")
+
+    # Workspace
+    ws_path = ctx_path / "workspace.json"
+    if ws_path.exists():
+        try:
+            with open(ws_path) as f:
+                ws = json.load(f)
+            ws_projects = ws.get("projects", [])
+            print(f"  Workspace:  {ws.get('workspace_name', '?')} ({len(ws_projects)} projects)")
+        except Exception:
+            pass
+
+    print()
+
+
+def cmd_absorb(target_path: str, context_repo: str = None,
+               author: str = "seif-absorb", name: str = None):
+    """Absorb knowledge from any directory into the current .seif context.
+
+    This is the 'git add' of SEIF — it takes knowledge from a source directory
+    and integrates it into the .seif/ structure with proper provenance and
+    registration in the global registry.
+
+    For code directories (with pyproject.toml, package.json, etc):
+        Uses semantic code compression (93% reduction).
+    For other directories:
+        Uses file extraction (markdown, text, configs).
+    """
+    from pathlib import Path
+    import json
+
+    target = Path(target_path).resolve()
+    if not target.exists():
+        print(f"Error: Path not found: {target}")
+        return
+
+    # Find or create .seif context
+    try:
+        from seif.context.autonomous import find_context_repo
+        ctx = context_repo or find_context_repo() or ".seif"
+    except ImportError:
+        ctx = context_repo or ".seif"
+
+    ctx_path = Path(ctx).resolve()
+    ctx_path.mkdir(parents=True, exist_ok=True)
+
+    source_name = name or target.name
+    is_code_project = any(
+        (target / m).exists()
+        for m in ["pyproject.toml", "package.json", "Cargo.toml", "go.mod",
+                   "Makefile", "CMakeLists.txt", "pom.xml", "build.gradle"]
+    )
+
+    print(f"═══ SEIF ABSORB ═══")
+    print(f"  Source:  {target}")
+    print(f"  Context: {ctx_path}")
+    print(f"  Mode:    {'code compression' if is_code_project else 'knowledge extraction'}")
+    print()
+
+    if is_code_project:
+        # Semantic code compression
+        try:
+            from seif.context.code_compressor import compress_project
+        except ImportError:
+            print("Code compression requires: pip install seif-cli")
+            return
+
+        project_dir = ctx_path / "projects" / source_name
+        project_dir.mkdir(parents=True, exist_ok=True)
+        target_file = str(project_dir / "code.seif")
+
+        module, path = compress_project(
+            str(target), author=author, target_path=target_file
+        )
+        print(f"  Project: {source_name}")
+        print(f"  Files:   {module.original_words} LOC")
+        print(f"  Compressed: {module.compressed_words} words")
+        print(f"  Ratio:   {module.compression_ratio}:1")
+        print(f"  Hash:    {module.integrity_hash}")
+        print(f"  Saved:   {path}")
+
+        # Also sync git context if available
+        if (target / ".git").exists():
+            try:
+                from seif.context.git_context import sync_project
+                proj_seif = str(project_dir / "project.seif")
+                git_module, git_path = sync_project(
+                    str(target), author=author, target_path=proj_seif
+                )
+                print(f"  Git ctx: {git_path} ({git_module.compressed_words} words)")
+            except Exception as e:
+                print(f"  Git ctx: skipped ({e})")
+
+    else:
+        # Knowledge extraction from files
+        try:
+            from seif.context.file_extractor import scan_directory, build_extract_module
+        except ImportError:
+            # Fallback: use code compressor for any directory
+            try:
+                from seif.context.code_compressor import compress_project
+                project_dir = ctx_path / "projects" / source_name
+                project_dir.mkdir(parents=True, exist_ok=True)
+                target_file = str(project_dir / "code.seif")
+                module, path = compress_project(
+                    str(target), author=author, target_path=target_file
+                )
+                print(f"  Absorbed: {path} ({module.compressed_words} words)")
+            except ImportError:
+                print("Extraction requires: pip install seif-cli")
+            return
+
+        files = scan_directory(target)
+        if not files:
+            print("  No supported files found.")
+            return
+
+        by_type = {}
+        for f in files:
+            by_type[f.file_type] = by_type.get(f.file_type, 0) + 1
+        for ft, count in sorted(by_type.items()):
+            print(f"  {ft}: {count} files")
+
+        module = build_extract_module(files, source_name)
+        if module:
+            modules_dir = ctx_path / "modules"
+            modules_dir.mkdir(parents=True, exist_ok=True)
+            out_path = modules_dir / f"{source_name}.seif"
+            with open(out_path, "w", encoding="utf-8") as f:
+                json.dump(module, f, indent=2, ensure_ascii=False)
+            print(f"\n  Absorbed: {out_path}")
+            print(f"  Words: {module.get('metadata', {}).get('word_count', '?')}")
+        else:
+            print("  No extractable content found.")
+            return
+
+    # Register in global registry
+    try:
+        from seif.context.registry import register_context
+        entry = register_context(str(ctx_path))
+        print(f"\n  Registry: {entry['name']} (in ~/.seif/registry.json)")
+    except Exception:
+        pass
+
+    print()
+    print("Next:")
+    print(f"  seif --list                  — see all contexts")
+    print(f"  seif --quality-gate \"text\"   — measure quality")
+    print(f"  seif --sync                  — re-sync after changes")
+
+
 # ── Agent Roles & Start ─────────────────────────────────────────────────────
 
 _AGENT_ROLES_FILE = "agent-roles-v1.seif"
@@ -3172,6 +3484,9 @@ def main():
             '  seif "O amor liberta e guia"          # full RPWP pipeline\n'
             '  seif --gate "Tesla 369"                # resonance gate only\n'
             '  seif --init                            # initialize .seif context\n'
+            '  seif --absorb ./src/                   # absorb knowledge from directory\n'
+            '  seif --list                            # list all your contexts\n'
+            '  seif --status                          # current context status\n'
             '  seif --sync                            # re-sync git context\n'
             '  seif --quality-gate "text" --role ai   # measure AI response\n'
         ),
@@ -3376,6 +3691,16 @@ def main():
     parser.add_argument("--extract", metavar="PATH", nargs="?", const=".",
                         help="Extract knowledge from files/directories into .seif modules")
 
+    # ── Context Registry (Git for Context) ──
+    parser.add_argument("--absorb", metavar="PATH", nargs="?", const=".",
+                        help="Absorb knowledge from any directory into .seif context")
+    parser.add_argument("--absorb-name", metavar="NAME",
+                        help="Name for the absorbed context (default: directory name)")
+    parser.add_argument("--list", dest="list_contexts", action="store_true",
+                        help="List all registered .seif contexts")
+    parser.add_argument("--status", dest="show_status", action="store_true",
+                        help="Show current .seif context status")
+
     # ── Model Profiles ──
     parser.add_argument("--models", metavar="ACTION", nargs="?", const="show",
                         choices=["show", "update", "behavior", "record"],
@@ -3470,7 +3795,9 @@ def main():
         print("  --sources [list|add|...]   Manage context sources")
         print("  --onboard                  Guided first-run setup")
         print("  --cycle ACTION             Manage SEIF cycles")
-        print("  --absorb                   Absorb session knowledge")
+        print("  --absorb [PATH]            Absorb knowledge from directory into .seif")
+        print("  --list                     List all registered .seif contexts")
+        print("  --status                   Show current .seif context status")
         print("  --context-repo PATH        Use external SEIF Context Repository")
         print("  --export                   Export context (PUBLIC/INTERNAL/CONFIDENTIAL)")
         print("  --consult QUESTION         Inter-AI consultation")
@@ -3495,6 +3822,20 @@ def main():
     if args.extract:
         cmd_extract(args.extract, context_repo=args.context_repo,
                     classification=args.classification)
+        return
+
+    if args.absorb is not None:
+        cmd_absorb(args.absorb, context_repo=args.context_repo,
+                   author=args.author,
+                   name=getattr(args, 'absorb_name', None))
+        return
+
+    if getattr(args, 'list_contexts', False):
+        cmd_list()
+        return
+
+    if getattr(args, 'show_status', False):
+        cmd_status(context_repo=args.context_repo)
         return
 
     if args.keygen:
