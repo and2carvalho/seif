@@ -111,7 +111,7 @@ def cmd_compress(project_path: str, watch: bool = False,
     try:
         from seif.context.code_compressor import compress_project, watch_project
     except ImportError:
-        print("This feature requires SEIF Suite. Learn more: https://seifos.io")
+        print("Installation error: seif.context.code_compressor not found. Try: pip install --force-reinstall seif-cli")
         return
 
     target = None
@@ -145,7 +145,7 @@ def cmd_autonomous(action: str, context_repo: str = None):
             find_context_repo, CATEGORIES, DEFAULT_CONFIG,
         )
     except ImportError:
-        print("This feature requires SEIF Suite. Learn more: https://seifos.io")
+        _upgrade_message("--autonomous", "AI manages its own knowledge persistence across sessions.")
         return
 
     # Auto-discover context repo if not specified
@@ -218,7 +218,7 @@ def cmd_relay(module_paths: list[str], backend: str, prompt: str, output: str):
     try:
         from seif.bridge.ai_bridge import send, detect_backends
     except ImportError:
-        print("This feature requires SEIF Suite. Learn more: https://seifos.io")
+        _upgrade_message("--relay", "Send .seif modules to AI backends with classification filters.")
         return
 
     # Map short names to ai_bridge backend names
@@ -296,7 +296,7 @@ def cmd_packet(module_path: str, message: str, sender: str, receiver: str,
             describe_packet, packet_to_dict,
         )
     except ImportError:
-        print("This feature requires SEIF Suite. Learn more: https://seifos.io")
+        _upgrade_message("--packet", "Create encrypted SEIF packets for cross-AI relay.")
         return
 
     # Load module if provided
@@ -474,7 +474,7 @@ def cmd_consensus(question: str, module_paths: list[str], backends: list[str],
     try:
         from seif.bridge.ai_bridge import send, send_clean, detect_backends
     except ImportError:
-        print("This feature requires SEIF Suite. Learn more: https://seifos.io")
+        _upgrade_message("--consensus", "Run the same question across multiple AIs and measure agreement.")
         return
     from seif.analysis.quality_gate import assess
 
@@ -737,7 +737,7 @@ def cmd_export(context_repo: str, classification: str, output: str):
             load_mapper, bootstrap_context, find_context_repo, CLASSIFICATION_LEVELS,
         )
     except ImportError:
-        print("This feature requires SEIF Suite. Learn more: https://seifos.io")
+        print("Installation error: seif.context.autonomous not found. Try: pip install --force-reinstall seif-cli")
         return
 
     # Auto-discover context repo if not specified
@@ -774,7 +774,7 @@ def cmd_install_hooks(repo_path: str):
     try:
         from seif.context.git_hooks import install_hooks, check_hooks
     except ImportError:
-        print("This feature requires SEIF Suite. Learn more: https://seifos.io")
+        print("Installation error: seif.context.git_hooks not found. Try: pip install --force-reinstall seif-cli")
         return
     installed = install_hooks(repo_path)
     if installed:
@@ -836,7 +836,7 @@ def cmd_init(root_path: str, author: str, context_repo: str = None,
         from seif.context.git_context import sync_project, extract_git_context
         from seif.context.git_hooks import install_hooks
     except ImportError:
-        print("This feature requires SEIF Suite. Learn more: https://seifos.io")
+        print("Installation error: seif.context.workspace not found. Try: pip install --force-reinstall seif-cli")
         return
     from pathlib import Path
 
@@ -1066,7 +1066,7 @@ def cmd_workspace(workspace_root: str, ingest_source: str = None,
             sync_workspace, describe_workspace, ingest_to_workspace,
         )
     except ImportError:
-        print("This feature requires SEIF Suite. Learn more: https://seifos.io")
+        print("Installation error: seif.context.workspace not found. Try: pip install --force-reinstall seif-cli")
         return
 
     if ingest_source:
@@ -1099,7 +1099,7 @@ def cmd_handoff(session_name: str, context_repo: str = None):
         from seif.context.sessions import describe_session
         from seif.context.autonomous import find_context_repo
     except ImportError:
-        print("This feature requires SEIF Suite. Learn more: https://seifos.io")
+        _upgrade_message("--handoff", "Generate session handoff for multi-AI collaboration.")
         return
 
     ctx = context_repo or find_context_repo() or ".seif"
@@ -1131,7 +1131,7 @@ def cmd_mirror_weekly(context_repo: str = None):
         from seif.bridge.ai_bridge import detect_backends
         from seif.bridge.consensus import run_consensus
     except ImportError:
-        print("This feature requires SEIF Suite. Learn more: https://seifos.io")
+        _upgrade_message("--mirror-weekly", "Run weekly adversarial mirror analysis.")
         return
 
     backends = detect_backends()
@@ -1253,7 +1253,7 @@ def cmd_ingest(source: str, project_path: str, author: str, via: str):
     try:
         from seif.context.ingest import ingest, describe_ingest
     except ImportError:
-        print("This feature requires SEIF Suite. Learn more: https://seifos.io")
+        print("Installation error: seif.context.ingest not found. Try: pip install --force-reinstall seif-cli")
         return
     result = ingest(source, project_path, author=author, via=via)
     print(describe_ingest(result))
@@ -1283,7 +1283,7 @@ def cmd_sync(repo_path: str, author: str, via: str, context_repo: str = None):
     try:
         from seif.context.git_context import sync_project, extract_git_context
     except ImportError:
-        print("This feature requires SEIF Suite. Learn more: https://seifos.io")
+        print("Installation error: seif.context.git_context not found. Try: pip install --force-reinstall seif-cli")
         return
     ctx = extract_git_context(repo_path)
     print(f"Repository:    {ctx.repo_name}")
@@ -1357,7 +1357,7 @@ def cmd_contribute(module_path: str, text: str, author: str, via: str):
     try:
         from seif.context.context_manager import contribute_to_module
     except ImportError:
-        print("This feature requires SEIF Suite. Learn more: https://seifos.io")
+        print("Installation error: seif.context.context_manager not found. Try: pip install --force-reinstall seif-cli")
         return
     module, path = contribute_to_module(module_path, text, author, via)
     print(f"Contributed to: {path}")
@@ -1409,7 +1409,7 @@ def cmd_handshake(model: str, full: bool = False):
     try:
         from seif.context.context_manager import build_startup_context
     except ImportError:
-        print("This feature requires SEIF Suite. Learn more: https://seifos.io")
+        _upgrade_message("--handshake", "Test SEIF protocol loading across AI backends.")
         return
 
     model = model.lower().strip()
@@ -1648,13 +1648,18 @@ def cmd_consult(question: str, context_paths: list[str],
         from seif.bridge.ai_bridge import (
             send, detect_backends, build_safe_context, AIResponse,
         )
+    except ImportError:
+        _upgrade_message("", "Advanced feature — context management, multi-AI, or security.")
+        return
+    # ai_registry is optional (only needed for manual mode routing)
+    try:
         from seif.bridge.ai_registry import (
             recommend_backends, recommend_any, describe_recommendation,
             build_optimized_prompt, AI_REGISTRY, PROMPT_STYLES,
         )
+        _has_registry = True
     except ImportError:
-        print("This feature requires SEIF Suite. Learn more: https://seifos.io")
-        return
+        _has_registry = False
     from seif.analysis.quality_gate import assess
 
     backend_map = {
@@ -1666,6 +1671,9 @@ def cmd_consult(question: str, context_paths: list[str],
 
     # === MANUAL MODE ===
     if manual:
+        if not _has_registry:
+            print("Manual mode requires seif.bridge.ai_registry (not yet implemented).")
+            return
         # Recommend from ALL AIs (including manual-only)
         if force_backend:
             target_key = backend_map.get(force_backend, force_backend)
@@ -1757,19 +1765,23 @@ def cmd_consult(question: str, context_paths: list[str],
         backend_key = backend_map.get(force_backend, force_backend)
         if backend_key not in available:
             # Suggest manual mode if backend has no API
-            profile = AI_REGISTRY.get(backend_key)
-            if profile and profile.backend is None:
-                print(f"{profile.name} has no API backend. Use --manual mode:")
-                print(f"  seif --consult \"{question[:50]}...\" --to {force_backend} --manual")
-                return
+            if _has_registry:
+                profile = AI_REGISTRY.get(backend_key)
+                if profile and profile.backend is None:
+                    print(f"{profile.name} has no API backend. Use --manual mode:")
+                    print(f"  seif --consult \"{question[:50]}...\" --to {force_backend} --manual")
+                    return
             print(f"Error: backend '{force_backend}' not available.")
             print(f"Available: {', '.join(available)}")
             return
-    else:
+    elif _has_registry:
         ranked = recommend_backends(question, available)
         backend_key = ranked[0]
         routing = describe_recommendation(question, available)
         print(f"[Routing] {routing}")
+    else:
+        backend_key = list(available)[0]
+        print(f"[Routing] Using first available backend: {backend_key}")
 
     # Build context (classification-filtered)
     max_cls = "CONFIDENTIAL" if allow_confidential else "INTERNAL"
@@ -1885,7 +1897,7 @@ def cmd_generate(output_dir: str, context_repo: str = None,
         from seif.context.doc_generator import generate_docs
         from seif.context.autonomous import find_context_repo
     except ImportError:
-        print("This feature requires SEIF Suite. Learn more: https://seifos.io")
+        _upgrade_message("--generate", "Generate documentation from .seif context modules.")
         return
 
     ctx = context_repo or find_context_repo() or ".seif"
@@ -1911,7 +1923,7 @@ def cmd_changelog(output: str, context_repo: str = None):
         from seif.context.doc_generator import generate_changelog
         from seif.context.autonomous import find_context_repo
     except ImportError:
-        print("This feature requires SEIF Suite. Learn more: https://seifos.io")
+        _upgrade_message("--changelog", "Generate CHANGELOG.md from decisions.seif history.")
         return
 
     ctx = context_repo or find_context_repo() or ".seif"
@@ -1932,7 +1944,7 @@ def cmd_scan(program: str, global_store: bool = False,
     try:
         from seif.context.cli_scanner import scan_program, capture_help
     except ImportError:
-        print("This feature requires SEIF Suite. Learn more: https://seifos.io")
+        _upgrade_message("--scan", "Scan a program's --help and generate a .seif knowledge module.")
         return
 
     # Quick check: can we run the program?
@@ -2031,12 +2043,16 @@ def cmd_adversarial(question: str, context_paths: list[str],
         from seif.bridge.ai_bridge import (
             send, send_clean, detect_backends, AIResponse,
         )
+    except ImportError:
+        _upgrade_message("", "Advanced feature — context management, multi-AI, or security.")
+        return
+    try:
         from seif.bridge.ai_registry import (
             recommend_backends, describe_recommendation,
         )
+        _has_registry = True
     except ImportError:
-        print("This feature requires SEIF Suite. Learn more: https://seifos.io")
-        return
+        _has_registry = False
     from seif.analysis.quality_gate import assess
 
     backend_map = {
@@ -2057,9 +2073,12 @@ def cmd_adversarial(question: str, context_paths: list[str],
             print(f"Error: backend '{force_backend}' not available.")
             print(f"Available: {', '.join(available)}")
             return
-    else:
+    elif _has_registry:
         ranked = recommend_backends(question, available)
         backend_key = ranked[0]
+    else:
+        # Without registry, use first available backend
+        backend_key = list(available)[0]
 
     # Build context for protocol version
     module_context = ""
@@ -2280,7 +2299,7 @@ def cmd_streaming_start(
     try:
         from seif.identity_block import parse_identity_block
     except ImportError:
-        print("This feature requires SEIF Suite. Learn more: https://seifos.io")
+        _upgrade_message("", "Advanced feature — context management, multi-AI, or security.")
         return
     import json
 
@@ -2403,7 +2422,7 @@ def cmd_boot_check(
             run_boot_check, describe_result, auto_detect_backends
         )
     except ImportError:
-        print("This feature requires SEIF Suite. Learn more: https://seifos.io")
+        _upgrade_message("--boot-check", "Verify SEIF protocol loads correctly across multiple LLMs.")
         return
 
     if not backends and not auto and not all_backends:
@@ -2442,7 +2461,7 @@ def cmd_security(args):
     try:
         from seif.context.autonomous import find_context_repo
     except ImportError:
-        print("This feature requires SEIF Suite. Learn more: https://seifos.io")
+        _upgrade_message("--security", "Run Red/Blue team security assessment on your .seif context.")
         return
     ctx = args.context_repo or find_context_repo() or ".seif"
     action = args.security
@@ -2467,14 +2486,14 @@ def cmd_security(args):
     try:
         from seif.bridge.local_proxy import classify_input
     except ImportError:
-        print("This feature requires SEIF Suite. Learn more: https://seifos.io")
+        _upgrade_message("--security", "Run Red/Blue team security assessment on your .seif context.")
         return
 
     if action == "red":
         try:
             from seif_engine.security.redblue import red_team_test
         except ImportError:
-            print("This feature requires SEIF Suite. Learn more: https://seifos.io")
+            _upgrade_message("--security", "Run Red/Blue team security assessment on your .seif context.")
             return
         print("═══ SEIF RED TEAM ═══\n")
         report = red_team_test(classify_input)
@@ -2498,7 +2517,7 @@ def cmd_security(args):
         try:
             from seif_engine.security.redblue import blue_team_audit
         except ImportError:
-            print("This feature requires SEIF Suite. Learn more: https://seifos.io")
+            _upgrade_message("--security", "Run Red/Blue team security assessment on your .seif context.")
             return
         print("═══ SEIF BLUE TEAM ═══\n")
         audit = blue_team_audit(ctx)
@@ -2519,7 +2538,7 @@ def cmd_security(args):
     try:
         from seif_engine.security.redblue import run_full_assessment
     except ImportError:
-        print("This feature requires SEIF Suite. Learn more: https://seifos.io")
+        _upgrade_message("--security", "Run Red/Blue team security assessment on your .seif context.")
         return
     print("═══ SEIF SECURITY ASSESSMENT ═══\n")
     score = run_full_assessment(classify_input, ctx, persist=True)
@@ -2542,7 +2561,7 @@ def cmd_proxy(args):
     try:
         from seif.bridge.local_proxy import status, classify_input, _ollama_pull
     except ImportError:
-        print("This feature requires SEIF Suite. Learn more: https://seifos.io")
+        _upgrade_message("--proxy", "Manage local LLM proxy for data sovereignty (Ollama).")
         return
 
     if args.proxy_test:
@@ -2609,7 +2628,7 @@ def cmd_dia_skill():
     try:
         from seif.context.nucleus import load_profile, load_sources
     except ImportError:
-        print("This feature requires SEIF Suite. Learn more: https://seifos.io")
+        _upgrade_message("--dia-skill", "Browser-AI bridge via Dia integration.")
         return
     from seif.data.paths import get_user_home
     import json
@@ -2895,7 +2914,7 @@ def cmd_profile(args):
     try:
         from seif.context.nucleus import load_profile, init_profile
     except ImportError:
-        print("This feature requires SEIF Suite. Learn more: https://seifos.io")
+        _upgrade_message("--profile", "Manage AI model behavioral profiles.")
         return
 
     action = args.profile
@@ -2941,7 +2960,7 @@ def cmd_sources(args):
             load_sources, add_source, remove_source, sync_all_sources, load_profile
         )
     except ImportError:
-        print("This feature requires SEIF Suite. Learn more: https://seifos.io")
+        _upgrade_message("--sources", "Manage knowledge sources for context building.")
         return
 
     action = args.sources
@@ -2990,7 +3009,7 @@ def cmd_extract(path: str, context_repo: str = None,
         from seif.context.file_extractor import scan_directory, build_extract_module
         from seif.context.autonomous import find_context_repo
     except ImportError:
-        print("This feature requires SEIF Suite. Learn more: https://seifos.io")
+        print("Installation error: seif.context.file_extractor not found. Try: pip install --force-reinstall seif-cli")
         return
 
     target = Path(path).resolve()
@@ -3638,7 +3657,39 @@ def _cmd_start(ctx_repo: str) -> None:
     print("╚════════════════════════════════════════════════════╝")
 
 
+def _try_load_engine():
+    """Attempt to load seif-engine, which injects paid modules into seif.* namespace."""
+    try:
+        import seif_engine  # noqa: F401 — triggers namespace injection via _shims
+        return True
+    except ImportError:
+        return False
+
+
+_ENGINE_AVAILABLE = None
+
+
+def _has_engine():
+    """Check if seif-engine is available (cached)."""
+    global _ENGINE_AVAILABLE
+    if _ENGINE_AVAILABLE is None:
+        _ENGINE_AVAILABLE = _try_load_engine()
+    return _ENGINE_AVAILABLE
+
+
+def _upgrade_message(command: str, description: str):
+    """Print a clear upgrade message for paid features."""
+    print(f"\n  seif {command}")
+    print(f"  {description}\n")
+    print(f"  This feature requires seif-engine.")
+    print(f"  Upgrade:    pip install seif-engine")
+    print(f"  Learn more: https://seifprotocol.com/pricing\n")
+
+
 def main():
+    # Load engine namespace injection if available
+    _has_engine()
+
     parser = argparse.ArgumentParser(
         prog="seif",
         description="S.E.I.F. — Unified CLI",
@@ -4051,7 +4102,7 @@ def main():
                 list_behavior_types, record_behavioral_observation,
             )
         except ImportError:
-            print("This feature requires SEIF Suite. Learn more: https://seifos.io")
+            _upgrade_message("", "Advanced feature — context management, multi-AI, or security.")
             return
         if args.models == "update":
             results = update_all_profiles()
@@ -4095,7 +4146,7 @@ def main():
             from seif.bridge.ai_bridge import detect_backends
             from seif.bridge.backend_health import describe_health, load_health, get_healthy_backends
         except ImportError:
-            print("This feature requires SEIF Suite. Learn more: https://seifos.io")
+            _upgrade_message("--health", "Check AI backend availability and health status.")
             return
         from seif.cli.resonance_display import resonance_header, health_status_line
         detected = detect_backends()
@@ -4113,7 +4164,7 @@ def main():
         try:
             from seif.context.autonomous import audit_context, find_context_repo
         except ImportError:
-            print("This feature requires SEIF Suite. Learn more: https://seifos.io")
+            _upgrade_message("", "Advanced feature — context management, multi-AI, or security.")
             return
         ctx = args.context_repo or find_context_repo() or ".seif"
         print(f"Auditing: {ctx}")
@@ -4246,7 +4297,7 @@ def main():
             )
             from seif.context.autonomous import find_context_repo
         except ImportError:
-            print("This feature requires SEIF Suite. Learn more: https://seifos.io")
+            _upgrade_message("--session", "Track and manage multi-AI collaboration sessions.")
             return
         ctx = args.context_repo or find_context_repo() or ".seif"
         action = args.session.lower()
@@ -4387,7 +4438,7 @@ def main():
             from seif.context.sessions import create_session_v2
             from seif.context.autonomous import find_context_repo
         except ImportError:
-            print("This feature requires SEIF Suite. Learn more: https://seifos.io")
+            _upgrade_message("--session", "Track and manage multi-AI collaboration sessions.")
             return
         ctx = args.context_repo or find_context_repo() or ".seif"
         author_name = args.author or "unknown"
