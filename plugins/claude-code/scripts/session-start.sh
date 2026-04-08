@@ -206,4 +206,19 @@ if p:
   fi
 fi
 
+# ── Phase 4: Model Orchestra Discovery ────────────────────────────────────
+# Probes local models, API backends, CLI tools, and circuit status.
+# Output stays under 500 tokens to avoid context bloat.
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ORCHESTRA_PROBE="$SCRIPT_DIR/orchestra-probe.py"
+
+if [ -f "$ORCHESTRA_PROBE" ]; then
+  ORCHESTRA=$(timeout 5 python3 "$ORCHESTRA_PROBE" 2>/dev/null || echo "[MODEL ORCHESTRA] probe timeout — check orchestra-probe.py")
+  if [ -n "$ORCHESTRA" ]; then
+    echo "$ORCHESTRA"
+    echo ""
+  fi
+fi
+
 exit 0
