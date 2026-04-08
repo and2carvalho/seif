@@ -20,6 +20,7 @@ Storage: data/modules/*.seif
 
 import json
 import hashlib
+import logging
 from dataclasses import dataclass, asdict, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -28,6 +29,8 @@ from typing import Optional
 from seif.core.resonance_gate import evaluate
 from seif.core.resonance_encoding import encode_phrase
 from seif.core.resonance_signal import load_and_validate
+
+logger = logging.getLogger(__name__)
 
 from seif.data.paths import get_resonance_path, get_defaults_dir, get_modules_dir
 
@@ -141,6 +144,48 @@ def save_module(module: SeifModule, filename: str = None,
     return path
 
 
+def _verify_signature_on_load(data: dict, path: str) -> Optional[bool]:
+    """Verify Ed25519 signature inline during module load.
+
+    Returns True (valid), False (invalid), or None (no signature / crypto unavailable).
+    Never raises — verification failure is reported, not fatal.
+    """
+    sig_block = data.get("signature")
+    if not sig_block:
+        return None
+
+    integrity_hash = data.get("integrity_hash", "")
+    if not integrity_hash:
+        logger.warning("[SEIF] %s: signature present but no integrity_hash", Path(path).name)
+        return False
+
+    try:
+        import base64
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+        from cryptography.exceptions import InvalidSignature
+
+        key_b64 = sig_block.get("public_key", "")
+        if not key_b64:
+            logger.warning("[SEIF] %s: signature block missing public_key", Path(path).name)
+            return False
+
+        raw_key = base64.b64decode(key_b64)
+        public_key = Ed25519PublicKey.from_public_bytes(raw_key)
+        sig_bytes = base64.b64decode(sig_block["signed_hash"])
+        public_key.verify(sig_bytes, integrity_hash.encode())
+        return True
+
+    except InvalidSignature:
+        logger.warning("[SEIF] %s: Ed25519 signature INVALID — possible tampering", Path(path).name)
+        return False
+    except ImportError:
+        logger.debug("[SEIF] cryptography not installed — skipping signature verification")
+        return None
+    except Exception as e:
+        logger.warning("[SEIF] %s: signature verification error: %s", Path(path).name, e)
+        return False
+
+
 def load_module(path: str, verify: bool = True) -> SeifModule:
     """Load a .seif module with optional integrity verification.
 
@@ -152,7 +197,14 @@ def load_module(path: str, verify: bool = True) -> SeifModule:
     with open(path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
-    module = SeifModule(**data)
+    # Extract signature block before dataclass construction (not a SeifModule field)
+    sig_block = data.pop("signature", None)
+
+    # Filter out any other unknown fields to prevent TypeError on dataclass init
+    known_fields = set(SeifModule.__dataclass_fields__.keys())
+    filtered = {k: v for k, v in data.items() if k in known_fields}
+
+    module = SeifModule(**filtered)
 
     if verify and module.integrity_hash and module.summary:
         computed = _compute_hash(module.summary)
@@ -162,6 +214,17 @@ def load_module(path: str, verify: bool = True) -> SeifModule:
                 f"stored={module.integrity_hash}, computed={computed}. "
                 f"Module may be corrupted or tampered."
             )
+
+    # Ed25519 signature verify-on-load (F6 guardian finding)
+    # Non-blocking: result stored as attribute, human decides action
+    if verify and sig_block:
+        data_with_sig = {**data, "signature": sig_block}
+        sig_valid = _verify_signature_on_load(data_with_sig, path)
+        module.signature_valid = sig_valid  # type: ignore[attr-defined]
+    elif sig_block:
+        module.signature_valid = None  # type: ignore[attr-defined]
+    else:
+        module.signature_valid = None  # type: ignore[attr-defined]
 
     return module
 
@@ -321,6 +384,7 @@ def list_modules(include_defaults: bool = True) -> list[dict]:
                     "coherence": m.resonance.get("coherence", 0),
                     "gate": m.resonance.get("gate", "?"),
                     "active": m.active, "is_default": True,
+                    "signature_valid": getattr(m, "signature_valid", None),
                 })
             except Exception:
                 pass
@@ -337,6 +401,7 @@ def list_modules(include_defaults: bool = True) -> list[dict]:
                 "coherence": m.resonance.get("coherence", 0),
                 "gate": m.resonance.get("gate", "?"),
                 "active": m.active, "is_default": False,
+                "signature_valid": getattr(m, "signature_valid", None),
             })
         except Exception:
             pass
