@@ -176,5 +176,132 @@ class TestInitIdempotent(unittest.TestCase):
         self.assertEqual(v2["parent_hash"], v1["integrity_hash"])
 
 
+class TestOwnerModules(unittest.TestCase):
+    """Owner module templates created on init."""
+
+    def setUp(self):
+        self.root = _create_single_project()
+
+    def tearDown(self):
+        shutil.rmtree(str(self.root), ignore_errors=True)
+
+    def test_creates_owner_feedback_rules(self):
+        from seif.cli.cli import cmd_init
+        cmd_init(str(self.root), author="alice")
+        path = self.root / ".seif" / "modules" / "owner-feedback-rules.seif"
+        self.assertTrue(path.exists())
+        with open(path) as f:
+            data = json.load(f)
+        self.assertEqual(data["schema"], "SEIF-MODULE-v2")
+        self.assertEqual(data["classification"], "INTERNAL")
+        self.assertEqual(data["category"], "feedback")
+        self.assertEqual(data["author"], "alice")
+        self.assertIsInstance(data["rules"], list)
+        self.assertIn("integrity_hash", data)
+
+    def test_creates_owner_decisions(self):
+        from seif.cli.cli import cmd_init
+        cmd_init(str(self.root), author="alice")
+        path = self.root / ".seif" / "modules" / "owner-decisions.seif"
+        self.assertTrue(path.exists())
+        with open(path) as f:
+            data = json.load(f)
+        self.assertEqual(data["category"], "decisions")
+        self.assertIsInstance(data["decisions"], list)
+
+    def test_creates_owner_active_projects(self):
+        from seif.cli.cli import cmd_init
+        cmd_init(str(self.root), author="alice")
+        path = self.root / ".seif" / "modules" / "owner-active-projects.seif"
+        self.assertTrue(path.exists())
+        with open(path) as f:
+            data = json.load(f)
+        self.assertEqual(data["category"], "context")
+        self.assertIsInstance(data["projects"], list)
+
+    def test_creates_owner_session_history(self):
+        from seif.cli.cli import cmd_init
+        cmd_init(str(self.root), author="alice")
+        path = self.root / ".seif" / "modules" / "owner-session-history.seif"
+        self.assertTrue(path.exists())
+        with open(path) as f:
+            data = json.load(f)
+        self.assertIsInstance(data["sessions"], list)
+
+    def test_creates_owner_profile(self):
+        from seif.cli.cli import cmd_init
+        cmd_init(str(self.root), author="alice")
+        path = self.root / ".seif" / "private" / "owner" / "profile.seif"
+        self.assertTrue(path.exists())
+        with open(path) as f:
+            data = json.load(f)
+        self.assertEqual(data["profile"]["name"], "alice")
+        self.assertEqual(data["category"], "identity")
+        self.assertIn("integrity_hash", data)
+
+    def test_owner_modules_idempotent(self):
+        from seif.cli.cli import cmd_init
+        cmd_init(str(self.root), author="alice")
+        path = self.root / ".seif" / "modules" / "owner-feedback-rules.seif"
+        with open(path) as f:
+            v1 = json.load(f)
+
+        # Second init should NOT overwrite existing modules
+        cmd_init(str(self.root), author="bob")
+        with open(path) as f:
+            v2 = json.load(f)
+
+        self.assertEqual(v1["integrity_hash"], v2["integrity_hash"])
+        self.assertEqual(v1["author"], "alice")  # not overwritten to bob
+
+    def test_all_five_modules_created(self):
+        from seif.cli.cli import cmd_init
+        cmd_init(str(self.root), author="test")
+        expected = [
+            self.root / ".seif" / "modules" / "owner-feedback-rules.seif",
+            self.root / ".seif" / "modules" / "owner-decisions.seif",
+            self.root / ".seif" / "modules" / "owner-active-projects.seif",
+            self.root / ".seif" / "modules" / "owner-session-history.seif",
+            self.root / ".seif" / "private" / "owner" / "profile.seif",
+        ]
+        for p in expected:
+            self.assertTrue(p.exists(), f"Missing: {p.name}")
+
+
+class TestOwnerModulesUnit(unittest.TestCase):
+    """Unit tests for create_owner_modules (no git needed)."""
+
+    def setUp(self):
+        self.tmpdir = Path(tempfile.mkdtemp())
+
+    def tearDown(self):
+        shutil.rmtree(str(self.tmpdir), ignore_errors=True)
+
+    def test_creates_from_scratch(self):
+        from seif.context.workspace import create_owner_modules
+        count = create_owner_modules(self.tmpdir, owner_name="test-user")
+        self.assertEqual(count, 5)
+
+    def test_skips_existing(self):
+        from seif.context.workspace import create_owner_modules
+        create_owner_modules(self.tmpdir, owner_name="first")
+        count = create_owner_modules(self.tmpdir, owner_name="second")
+        self.assertEqual(count, 0)
+
+    def test_integrity_hash_present(self):
+        from seif.context.workspace import create_owner_modules
+        create_owner_modules(self.tmpdir, owner_name="x")
+        with open(self.tmpdir / "modules" / "owner-feedback-rules.seif") as f:
+            data = json.load(f)
+        self.assertEqual(len(data["integrity_hash"]), 24)
+
+    def test_default_owner_name(self):
+        from seif.context.workspace import create_owner_modules
+        create_owner_modules(self.tmpdir)
+        with open(self.tmpdir / "modules" / "owner-feedback-rules.seif") as f:
+            data = json.load(f)
+        self.assertEqual(data["author"], "workspace-owner")
+
+
 if __name__ == "__main__":
     unittest.main()

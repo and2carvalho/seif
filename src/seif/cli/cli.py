@@ -905,6 +905,18 @@ def cmd_init(root_path: str, author: str, context_repo: str = None):
     except Exception as e:
         print(f"\n  (registry: {e})")
 
+    # Create owner module templates
+    try:
+        from seif.context.workspace import create_owner_modules
+        seif_path = Path(context_repo).resolve() if context_repo else root / ".seif"
+        owner_created = create_owner_modules(seif_path, owner_name=author)
+        if owner_created:
+            print(f"\nOwner modules: {owner_created} templates created")
+            print(f"  {seif_path / 'modules'}/ (feedback, decisions, projects, sessions)")
+            print(f"  {seif_path / 'private' / 'owner' / 'profile.seif'}")
+    except Exception as e:
+        print(f"\n  (owner modules: {e})")
+
     print()
     print("Done. Next steps:")
     print("  seif --quality-gate \"text\"       — measure any text")
@@ -2308,7 +2320,7 @@ def cmd_security(args):
 
     if action == "red":
         try:
-            from seif.security.redblue import red_team_test
+            from seif_engine.security.redblue import red_team_test
         except ImportError:
             print("This feature requires SEIF Suite. Learn more: https://seifos.io")
             return
@@ -2332,7 +2344,7 @@ def cmd_security(args):
 
     if action == "blue":
         try:
-            from seif.security.redblue import blue_team_audit
+            from seif_engine.security.redblue import blue_team_audit
         except ImportError:
             print("This feature requires SEIF Suite. Learn more: https://seifos.io")
             return
@@ -2353,7 +2365,7 @@ def cmd_security(args):
 
     # Default: full score
     try:
-        from seif.security.redblue import run_full_assessment
+        from seif_engine.security.redblue import run_full_assessment
     except ImportError:
         print("This feature requires SEIF Suite. Learn more: https://seifos.io")
         return
