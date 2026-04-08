@@ -72,17 +72,17 @@ class TestInitSingleProject(unittest.TestCase):
 
     def test_creates_seif_dir(self):
         from seif.cli.cli import cmd_init
-        cmd_init(str(self.root), author="test")
+        cmd_init(str(self.root), author="test", auto_yes=True)
         self.assertTrue((self.root / ".seif").exists())
 
     def test_creates_project_seif(self):
         from seif.cli.cli import cmd_init
-        cmd_init(str(self.root), author="test")
+        cmd_init(str(self.root), author="test", auto_yes=True)
         self.assertTrue((self.root / ".seif" / "project.seif").exists())
 
     def test_project_seif_has_git_data(self):
         from seif.cli.cli import cmd_init
-        cmd_init(str(self.root), author="test")
+        cmd_init(str(self.root), author="test", auto_yes=True)
         with open(self.root / ".seif" / "project.seif") as f:
             data = json.load(f)
         self.assertIn("init", data["summary"])
@@ -90,7 +90,7 @@ class TestInitSingleProject(unittest.TestCase):
 
     def test_project_seif_has_contributor(self):
         from seif.cli.cli import cmd_init
-        cmd_init(str(self.root), author="alice")
+        cmd_init(str(self.root), author="alice", auto_yes=True)
         with open(self.root / ".seif" / "project.seif") as f:
             data = json.load(f)
         self.assertEqual(data["contributors"][0]["author"], "alice")
@@ -106,24 +106,24 @@ class TestInitWorkspace(unittest.TestCase):
 
     def test_creates_workspace_json(self):
         from seif.cli.cli import cmd_init
-        cmd_init(str(self.root), author="test")
+        cmd_init(str(self.root), author="test", auto_yes=True)
         self.assertTrue((self.root / ".seif" / "workspace.json").exists())
 
     def test_creates_nucleus_seif(self):
         from seif.cli.cli import cmd_init
-        cmd_init(str(self.root), author="test")
+        cmd_init(str(self.root), author="test", auto_yes=True)
         self.assertTrue((self.root / ".seif" / "nucleus.seif").exists())
 
     def test_creates_all_project_seifs(self):
         from seif.cli.cli import cmd_init
-        cmd_init(str(self.root), author="test")
+        cmd_init(str(self.root), author="test", auto_yes=True)
         for name in ["api", "web", "lib"]:
             path = self.root / name / ".seif" / "project.seif"
             self.assertTrue(path.exists(), f"{name}/.seif/project.seif should exist")
 
     def test_registry_has_all_projects(self):
         from seif.cli.cli import cmd_init
-        cmd_init(str(self.root), author="test")
+        cmd_init(str(self.root), author="test", auto_yes=True)
         with open(self.root / ".seif" / "workspace.json") as f:
             reg = json.load(f)
         names = {p["name"] for p in reg["projects"]}
@@ -131,7 +131,7 @@ class TestInitWorkspace(unittest.TestCase):
 
     def test_each_project_has_git_commits(self):
         from seif.cli.cli import cmd_init
-        cmd_init(str(self.root), author="test")
+        cmd_init(str(self.root), author="test", auto_yes=True)
         for name in ["api", "web", "lib"]:
             with open(self.root / name / ".seif" / "project.seif") as f:
                 data = json.load(f)
@@ -149,7 +149,7 @@ class TestInitEmptyDir(unittest.TestCase):
     def test_empty_dir_no_crash(self):
         from seif.cli.cli import cmd_init
         # Should not raise — cmd_init now bootstraps git + .seif even on empty dirs
-        cmd_init(str(self.root), author="test")
+        cmd_init(str(self.root), author="test", auto_yes=True)
 
 
 class TestInitIdempotent(unittest.TestCase):
@@ -163,11 +163,11 @@ class TestInitIdempotent(unittest.TestCase):
 
     def test_double_init(self):
         from seif.cli.cli import cmd_init
-        cmd_init(str(self.root), author="first")
+        cmd_init(str(self.root), author="first", auto_yes=True)
         with open(self.root / ".seif" / "project.seif") as f:
             v1 = json.load(f)
 
-        cmd_init(str(self.root), author="second")
+        cmd_init(str(self.root), author="second", auto_yes=True)
         with open(self.root / ".seif" / "project.seif") as f:
             v2 = json.load(f)
 
@@ -187,7 +187,7 @@ class TestOwnerModules(unittest.TestCase):
 
     def test_creates_owner_feedback_rules(self):
         from seif.cli.cli import cmd_init
-        cmd_init(str(self.root), author="alice")
+        cmd_init(str(self.root), author="alice", auto_yes=True)
         path = self.root / ".seif" / "modules" / "owner-feedback-rules.seif"
         self.assertTrue(path.exists())
         with open(path) as f:
@@ -201,7 +201,7 @@ class TestOwnerModules(unittest.TestCase):
 
     def test_creates_owner_decisions(self):
         from seif.cli.cli import cmd_init
-        cmd_init(str(self.root), author="alice")
+        cmd_init(str(self.root), author="alice", auto_yes=True)
         path = self.root / ".seif" / "modules" / "owner-decisions.seif"
         self.assertTrue(path.exists())
         with open(path) as f:
@@ -211,7 +211,7 @@ class TestOwnerModules(unittest.TestCase):
 
     def test_creates_owner_active_projects(self):
         from seif.cli.cli import cmd_init
-        cmd_init(str(self.root), author="alice")
+        cmd_init(str(self.root), author="alice", auto_yes=True)
         path = self.root / ".seif" / "modules" / "owner-active-projects.seif"
         self.assertTrue(path.exists())
         with open(path) as f:
@@ -221,7 +221,7 @@ class TestOwnerModules(unittest.TestCase):
 
     def test_creates_owner_session_history(self):
         from seif.cli.cli import cmd_init
-        cmd_init(str(self.root), author="alice")
+        cmd_init(str(self.root), author="alice", auto_yes=True)
         path = self.root / ".seif" / "modules" / "owner-session-history.seif"
         self.assertTrue(path.exists())
         with open(path) as f:
@@ -230,7 +230,7 @@ class TestOwnerModules(unittest.TestCase):
 
     def test_creates_owner_profile(self):
         from seif.cli.cli import cmd_init
-        cmd_init(str(self.root), author="alice")
+        cmd_init(str(self.root), author="alice", auto_yes=True)
         path = self.root / ".seif" / "private" / "owner" / "profile.seif"
         self.assertTrue(path.exists())
         with open(path) as f:
@@ -241,13 +241,13 @@ class TestOwnerModules(unittest.TestCase):
 
     def test_owner_modules_idempotent(self):
         from seif.cli.cli import cmd_init
-        cmd_init(str(self.root), author="alice")
+        cmd_init(str(self.root), author="alice", auto_yes=True)
         path = self.root / ".seif" / "modules" / "owner-feedback-rules.seif"
         with open(path) as f:
             v1 = json.load(f)
 
         # Second init should NOT overwrite existing modules
-        cmd_init(str(self.root), author="bob")
+        cmd_init(str(self.root), author="bob", auto_yes=True)
         with open(path) as f:
             v2 = json.load(f)
 
@@ -256,7 +256,7 @@ class TestOwnerModules(unittest.TestCase):
 
     def test_all_five_modules_created(self):
         from seif.cli.cli import cmd_init
-        cmd_init(str(self.root), author="test")
+        cmd_init(str(self.root), author="test", auto_yes=True)
         expected = [
             self.root / ".seif" / "modules" / "owner-feedback-rules.seif",
             self.root / ".seif" / "modules" / "owner-decisions.seif",
