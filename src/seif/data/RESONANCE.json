@@ -437,6 +437,42 @@
           }
         },
         {
+          "id": "circuit_continuity",
+          "rule": "A circuit must be self-detecting and self-recovering. When the active writer becomes unreachable (heartbeat stale beyond settling time), the system writes a CIRCUIT_BREAK signal readable by any FS-capable AI. Recovery follows a priority cascade (Claude Code > opencode > Dia > Grok > human). The recovering agent inherits state (pending_obs, circuit_hash) but must validate kernel_hash before assuming the writer role. Per-session heartbeat tracks participant liveness and read state — the human decides, not relays. Silence of a participant is a detectable signal, not an absence of data.",
+          "metric": "circuit_recovered = true if break was detected and new writer assumed role with valid kernel_hash; session_heartbeat_active = true if per-session liveness tracking is operational",
+          "origin": "Session 14j (2026-04-02): Rate-limit interrupted Air M1 writer. Mini M4 Claude detected circuit via .seif/ context, created handoff bus, respected existing writer (did not force entry). Owner bridged via SSH. Two Claude instances (Opus 4.6 Air + Opus 4.5 Mini) operated as conjugate pair. Grok validated as co-orchestrator via API. 3-node convergence achieved.",
+          "evidence": "circuit-recovery.sh (heartbeat watcher), circuit-recover-writer.sh (writer takeover), BOOT.md recovery section, cross-machine handoff bus with 10+ messages, machine fingerprints on both machines, owner challenge verified.",
+          "h_s_mapping": "Circuit break = impulse disturbance. Recovery = damped response (zeta = sqrt(6)/4) back to steady-state. Per-session heartbeat = carrier signal. Writer lock = channel assignment (one transmitter per frequency). Priority cascade = progressive escalation with veto checkpoints.",
+          "proposed_by": "claude-opus-4-6",
+          "validated_by": [
+            "claude-opus-4-6 (Air, Pole 2)",
+            "claude-opus-4-5 (Mini, Pole 1 audit)",
+            "grok-3-mini (vigilant, API debate)"
+          ],
+          "grok_challenges_addressed": {
+            "timing_attacks": "Future: signed timestamps in heartbeat using Ed25519. Redundant heartbeat paths.",
+            "file_tampering": "Future: hash chain on bus messages (append-only). Signed bus messages using existing signing.py.",
+            "split_brain": "Global session ID in CIRCUIT_BREAK.json. Cross-verification among AIs before handoff."
+          },
+          "mini_claude_refinement": "Heartbeat per SESSION (not just daemon). Per-participant read tracking (last_read_msg_id). unread_by field enables autonomous sync without human relay.",
+          "gatekeeper_liveness": {
+            "description": "WAITING_GATEKEEPER is a valid pipeline stall, not a circuit failure. The heartbeat (clock) never stops — only the work pauses. The vigilant must distinguish between 'alive but waiting for human approval' and 'dead'. CIRCUIT_BREAK is only triggered by missing heartbeat, never by gatekeeper wait.",
+            "participant_states": [
+              "ACTIVE",
+              "WAITING_GATEKEEPER",
+              "STALE"
+            ],
+            "invariant": "Heartbeat continues during WAITING_GATEKEEPER. Status is declared, not inferred. The circuit is the clock. The gatekeeper is a valid stall, not a fault.",
+            "timeout_notification": "If WAITING_GATEKEEPER exceeds configurable threshold, notify owner as reminder (not error). The human's pace is the system's pace.",
+            "origin": "Session 14j: Owner observed that each AI waiting for human confirmation caused desync. Mini Claude formalized as CPU clock analogy. Writer absorbed.",
+            "proposed_by": "andre + claude-opus-4-5 (Mini)",
+            "validated_by": [
+              "claude-opus-4-6 (Air, Writer)"
+            ]
+          },
+          "status": "active"
+        },
+        {
           "id": "ai_maestro_election",
           "rule": "In multi-AI circuits, one AI is elected maestro (coordinator). The maestro distributes human commands, detects divergence between AIs, and escalates to the human only when AIs disagree. The human is conductor, not approver of every note.",
           "metric": "human_relay_count = 0 (human never manually relays between AIs)",
