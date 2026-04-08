@@ -786,7 +786,51 @@ def cmd_install_hooks(repo_path: str):
         print("No .git directory found. Initialize git first.")
 
 
-def cmd_init(root_path: str, author: str, context_repo: str = None):
+def _detect_owner(root: "Path") -> dict:
+    """Detect workspace owner from git config and RESONANCE.json."""
+    import subprocess as _sp
+    owner = {"name": None, "email": None, "fingerprint": None}
+
+    # Try git config
+    try:
+        result = _sp.run(["git", "config", "user.name"], capture_output=True, text=True, cwd=str(root))
+        if result.returncode == 0 and result.stdout.strip():
+            owner["name"] = result.stdout.strip()
+        result = _sp.run(["git", "config", "user.email"], capture_output=True, text=True, cwd=str(root))
+        if result.returncode == 0 and result.stdout.strip():
+            owner["email"] = result.stdout.strip()
+    except Exception:
+        pass
+
+    # Try RESONANCE.json for Ed25519 fingerprint
+    resonance_path = root / "RESONANCE.json"
+    if not resonance_path.exists():
+        # Check subprojects
+        for sub in root.iterdir():
+            r = sub / "RESONANCE.json"
+            if r.exists():
+                resonance_path = r
+                break
+
+    if resonance_path.exists():
+        try:
+            import json
+            with open(resonance_path) as f:
+                kernel = json.load(f)
+            fp = kernel.get("cryptographic_identity", {}).get("key_fingerprint")
+            if fp:
+                owner["fingerprint"] = fp
+            author_name = kernel.get("instruction", {}).get("author")
+            if author_name and not owner["name"]:
+                owner["name"] = author_name
+        except Exception:
+            pass
+
+    return owner
+
+
+def cmd_init(root_path: str, author: str, context_repo: str = None,
+             auto_yes: bool = False):
     try:
         from seif.context.workspace import discover_projects, sync_workspace, describe_workspace
         from seif.context.git_context import sync_project, extract_git_context
@@ -798,17 +842,42 @@ def cmd_init(root_path: str, author: str, context_repo: str = None):
 
     root = Path(root_path).resolve()
     root.mkdir(parents=True, exist_ok=True)
-    print(f"Initializing S.E.I.F. in: {root}")
-    if context_repo:
-        print(f"Context repository: {context_repo} (SCR mode)")
+
+    # ── Phase 1: Scan ──────────────────────────────────────────────
+    print(f"Scanning {root}...\n")
+
+    # Detect owner
+    owner = _detect_owner(root)
+    if owner["name"]:
+        print(f"Owner: {owner['name']}")
+        if owner["email"]:
+            print(f"  Email: {owner['email']}")
+        if owner["fingerprint"]:
+            print(f"  Ed25519 fingerprint: {owner['fingerprint']}")
+        if not author or author == "workspace":
+            author = owner["name"]
+    else:
+        print("Owner: (not detected — set with git config user.name or --author)")
     print()
 
-    # Phase 1: Scan for subprojects
+    if context_repo:
+        print(f"Context repository: {context_repo} (SCR mode)")
+        print()
+
+    # Discover projects
     subprojects = discover_projects(str(root))
 
+    # Check existing .seif state
+    seif_dir = root / ".seif"
+    has_existing = seif_dir.exists() and (seif_dir / "config.json").exists()
+
+    # ── Phase 2: Propose ────────────────────────────────────────────
     if subprojects:
-        # Workspace mode: multiple projects found
+        git_projects = [p for p in subprojects if (root / p.path / ".git").exists()]
+        non_git = [p for p in subprojects if p not in git_projects]
+
         print(f"Detected WORKSPACE with {len(subprojects)} projects:")
+        print()
         for p in subprojects:
             has_git = (root / p.path / ".git").exists()
             git_label = " (git)" if has_git else ""
@@ -817,7 +886,74 @@ def cmd_init(root_path: str, author: str, context_repo: str = None):
                 print(f"    {p.description[:80]}")
         print()
 
-        # Sync workspace (creates nucleus + all project .seif files)
+        # Propose structure
+        print("Proposed .seif/ structure:")
+        if context_repo:
+            ctx_path = Path(context_repo).resolve()
+            print(f"  {ctx_path}/config.json         — workspace configuration")
+            print(f"  {ctx_path}/mapper.json         — module index")
+            print(f"  {ctx_path}/nucleus.seif        — workspace-level context")
+            for p in subprojects:
+                print(f"  {ctx_path}/projects/{p.name}/")
+        else:
+            print(f"  .seif/config.json              — workspace configuration")
+            print(f"  .seif/mapper.json              — module index")
+            print(f"  .seif/nucleus.seif             — workspace-level context")
+            for p in subprojects:
+                print(f"  .seif/projects/{p.name}/")
+        if git_projects:
+            print(f"  + git hooks in {len(git_projects)} projects  — auto-sync on commit")
+        print(f"  + global registry              — ~/.seif/registry.json")
+        if owner["name"]:
+            print(f"  + owner profile                — modules/owner.seif")
+        if has_existing:
+            print()
+            print(f"  (existing .seif/ found — will merge, not overwrite)")
+        print()
+
+    else:
+        # Single project
+        has_git = (root / ".git").exists()
+        if has_git:
+            ctx = extract_git_context(str(root))
+            print(f"Detected SINGLE PROJECT: {ctx.repo_name}")
+            print(f"  Branch:       {ctx.branch}")
+            print(f"  Commits:      {ctx.total_commits}")
+            print(f"  Contributors: {len(ctx.contributors)}")
+            if ctx.manifest_type:
+                print(f"  Manifest:     {ctx.manifest_type}")
+            if ctx.hot_files:
+                top = ctx.hot_files[0]
+                print(f"  Hot file:     {top[0]} ({top[1]} changes)")
+        else:
+            print(f"No git repo found. Will initialize git.")
+
+        print()
+        print("Proposed .seif/ structure:")
+        print(f"  .seif/config.json              — project configuration")
+        print(f"  .seif/mapper.json              — module index")
+        if has_git:
+            print(f"  .seif/project.seif             — git context")
+            print(f"  + git hooks                    — auto-sync on commit")
+        print(f"  + global registry              — ~/.seif/registry.json")
+        print()
+
+    # ── Phase 3: Confirm ────────────────────────────────────────────
+    if not auto_yes:
+        try:
+            confirm = input("Proceed? [Y/n] ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            print("\nAborted.")
+            return
+
+        if confirm and confirm not in ("y", "yes", "s", "sim"):
+            print("Aborted.")
+            return
+
+    print()
+
+    # ── Phase 4: Execute ────────────────────────────────────────────
+    if subprojects:
         print("Syncing all projects...")
         registry = sync_workspace(str(root), author=author,
                                   context_repo_path=context_repo)
@@ -831,10 +967,8 @@ def cmd_init(root_path: str, author: str, context_repo: str = None):
             ctx_path = Path(context_repo).resolve()
             print(f"  {ctx_path}/manifest.json   — SCR manifest ({len(registry.projects)} projects)")
             print(f"  {ctx_path}/nucleus.seif     — workspace-level context")
-            print(f"  {ctx_path}/README.md        — AI bootstrap")
             for p in registry.projects:
-                print(f"  {ctx_path}/projects/{p.name}/ref.json")
-                print(f"  {ctx_path}/projects/{p.name}/project.seif")
+                print(f"  {ctx_path}/projects/{p.name}/")
         else:
             print(f"  .seif/workspace.json    — project registry ({len(registry.projects)} projects)")
             print(f"  .seif/nucleus.seif      — workspace-level context")
@@ -847,31 +981,21 @@ def cmd_init(root_path: str, author: str, context_repo: str = None):
         # Single project mode
         has_git = (root / ".git").exists()
         if not has_git:
-            print(f"No git repo found in {root}. Initializing git...")
+            print("Initializing git...")
             import subprocess as _sp
             _sp.run(["git", "init", str(root)], check=True, capture_output=True)
-            print(f"  git init done.")
+            print("  git init done.")
             has_git = True
 
         if has_git:
-            ctx = extract_git_context(str(root))
-            print(f"Detected SINGLE PROJECT: {ctx.repo_name}")
-            print(f"  Branch:       {ctx.branch}")
-            print(f"  Commits:      {ctx.total_commits}")
-            print(f"  Contributors: {len(ctx.contributors)}")
-            if ctx.manifest_type:
-                print(f"  Manifest:     {ctx.manifest_type}")
-            if ctx.hot_files:
-                top = ctx.hot_files[0]
-                print(f"  Hot file:     {top[0]} ({top[1]} changes)")
-            print()
+            if not subprojects:
+                ctx = extract_git_context(str(root))
 
             target = None
             if context_repo:
                 ctx_path = Path(context_repo).resolve()
                 ctx_path.mkdir(parents=True, exist_ok=True)
                 target = str(ctx_path / "projects" / ctx.repo_name / "project.seif")
-                # Create ref.json
                 from seif.context.ref import create_ref, save_ref
                 ref = create_ref(str(root), str(ctx_path))
                 save_ref(ref, Path(target).parent / "ref.json")
@@ -882,9 +1006,8 @@ def cmd_init(root_path: str, author: str, context_repo: str = None):
             print(f"  Words:   {module.compressed_words}")
             print(f"  Hash:    {module.integrity_hash}")
 
-    # Install git hooks for auto-sync
+    # Install git hooks
     if subprojects:
-        # Install hooks in each subproject with git
         hook_count = 0
         for p in subprojects:
             project_dir = root / p.path
@@ -903,8 +1026,8 @@ def cmd_init(root_path: str, author: str, context_repo: str = None):
     # Register in global registry
     try:
         from seif.context.registry import register_context
-        seif_dir = str(Path(context_repo).resolve()) if context_repo else str(root / ".seif")
-        entry = register_context(seif_dir)
+        seif_dir_str = str(Path(context_repo).resolve()) if context_repo else str(root / ".seif")
+        entry = register_context(seif_dir_str)
         print(f"\nRegistered in ~/.seif/registry.json as '{entry['name']}'")
         print(f"  Use: seif --list          — see all your contexts")
     except Exception as e:
@@ -1034,9 +1157,9 @@ def cmd_verify_seed():
         return
 
     seed = "A Semente de Enoque"
-    is_valid, resonance = verify_seed(seed)
-    print(f"Enoch seed verification: {'VALID' if is_valid else 'INVALID'}")
-    print(f"Resonance: {resonance}")
+    result = verify_seed(seed)
+    print(f"Enoch seed verification: {'VALID' if result['verified'] else 'INVALID'}")
+    print(f"Resonance: sum={result['actual_sum']}, root={result['actual_root']}, phase={result['phase']}")
 
 
 def cmd_evolve():
@@ -1221,11 +1344,11 @@ def cmd_sync(repo_path: str, author: str, via: str, context_repo: str = None):
     try:
         from seif.core.resonance_gate import verify_seed
         seed = "A Semente de Enoque"
-        is_valid, resonance = verify_seed(seed)
-        if is_valid:
-            print(f"\n  Enoch seed:  Aligned (resonance: {resonance:.3f})")
+        result = verify_seed(seed)
+        if result["verified"]:
+            print(f"\n  Enoch seed:  Aligned (sum={result['actual_sum']}, root={result['actual_root']}, phase={result['phase']})")
         else:
-            print(f"\n  Enoch seed:  Misaligned (resonance: {resonance:.3f})")
+            print(f"\n  Enoch seed:  Misaligned (sum={result['actual_sum']}, root={result['actual_root']}, phase={result['phase']})")
     except Exception:
         pass
 
@@ -3560,6 +3683,8 @@ def main():
     parser.add_argument("--all", action="store_true", help="Pipeline completo (padrão)")
     parser.add_argument("--init", nargs="?", const=".", metavar="PATH",
                         help="Initialize S.E.I.F.: scan, detect projects, extract git, generate .seif")
+    parser.add_argument("-y", "--yes", action="store_true",
+                        help="Skip confirmation prompt (auto-approve)")
     parser.add_argument("--install-hooks", nargs="?", const=".", metavar="REPO",
                         help="Install git hooks for auto-sync on commit/pull/checkout")
     parser.add_argument("--quality-gate", action="store_true",
@@ -4361,7 +4486,8 @@ def main():
         return
 
     if args.init is not None:
-        cmd_init(args.init, args.author, context_repo=args.context_repo)
+        cmd_init(args.init, args.author, context_repo=args.context_repo,
+                auto_yes=args.yes)
         return
 
     if args.sync is not None:

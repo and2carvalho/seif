@@ -21,7 +21,7 @@ Storage: data/modules/*.seif
 import json
 import hashlib
 import logging
-from dataclasses import dataclass, asdict, field
+from dataclasses import dataclass, asdict, field, fields, MISSING
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -64,6 +64,26 @@ class SeifModule:
     parent_hash: Optional[str] = None
     updated_at: Optional[str] = None
     classification: Optional[str] = None   # PUBLIC | INTERNAL | CONFIDENTIAL
+    # Forward compatibility: extra fields from evolved modules are preserved
+    _extra: dict = field(default_factory=dict)
+
+    def __init__(self, **kwargs):
+        """Accept unknown fields for forward compatibility (evolved .seif modules)."""
+        known = {f.name for f in fields(self) if f.name != '_extra'}
+        extra = {}
+        for k, v in kwargs.items():
+            if k in known:
+                setattr(self, k, v)
+            else:
+                extra[k] = v
+        # Set defaults for any known fields not provided
+        for f in fields(self):
+            if f.name != '_extra' and not hasattr(self, f.name):
+                if f.default is not MISSING:
+                    setattr(self, f.name, f.default)
+                elif f.default_factory is not MISSING:
+                    setattr(self, f.name, f.default_factory())
+        self._extra = extra
 
 
 def _compute_hash(summary: str) -> str:
