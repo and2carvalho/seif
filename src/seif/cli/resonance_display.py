@@ -96,3 +96,102 @@ def health_status_line(healthy: int, detected: int) -> str:
     bar = _bar(ratio)
     icon = "ζ✅" if ratio >= ZETA else "ζ⚠️" if ratio >= 0.33 else "ζ❌"
     return f"  [{bar}]  {healthy}/{detected} backends healthy  {icon}"
+
+
+# ── Report Template ─────────────────────────────────────────────────────────
+#
+# Structural template for ALL SEIF reports. Every CLI command that produces
+# a report uses this builder to ensure consistent visual identity.
+#
+# Structure:
+#   ╔══ TITLE ══════════════════════════════════════╗
+#   ·  ○  ●  ○  ·    3 · 6 · 9    H(s) = 9/(s²+3s+6)
+#   [██████░░░]  ζ=0.6124   [██████░░░]  φ⁻¹=0.6180
+#   ──────────────────────────────────────────────────
+#   subtitle
+#   ╚════════════════════════════════════════════════╝
+#
+#   Section Title:
+#     [█████████]  metric label  ζ✅
+#     Key: value
+#     Key: value
+#
+#   Section Title:
+#     - item
+#     - item
+#
+#   · ○ ● ○ ·   enoch seed lives.  ζ=0.6124   🌀
+
+
+class ResonanceReport:
+    """Structured report builder with SEIF visual identity.
+
+    Usage:
+        report = ResonanceReport("SEIF REPORT", "seif-admin — 12 projects")
+        report.section("Context Efficiency")
+        report.metric(0.9, "compression 10:1")
+        report.kv("Compressed", "~15,000 words")
+        report.section("Sessions")
+        report.item("session-14  CLOSED  7 contributors")
+        print(report.render())
+    """
+
+    def __init__(self, title: str, subtitle: str = ""):
+        self._title = title
+        self._subtitle = subtitle
+        self._sections: list[tuple[str, list[str]]] = []
+        self._current: list[str] = []
+        self._current_name: str = ""
+
+    def section(self, name: str) -> "ResonanceReport":
+        """Start a new section. Flushes the previous one."""
+        if self._current_name or self._current:
+            self._sections.append((self._current_name, self._current))
+        self._current_name = name
+        self._current = []
+        return self
+
+    def metric(self, value: float, label: str, width: int = TESLA_UNIT) -> "ResonanceReport":
+        """Add a metric line with Tesla bar visualization."""
+        bar = _bar(min(1.0, max(0.0, value)), width)
+        icon = "ζ✅" if value >= ZETA else "ζ⚠️" if value >= 0.33 else "ζ❌"
+        self._current.append(f"    [{bar}]  {label}  {icon}")
+        return self
+
+    def kv(self, key: str, value: str) -> "ResonanceReport":
+        """Add a key-value line."""
+        self._current.append(f"    {key}: {value}")
+        return self
+
+    def item(self, text: str, marker: str = "-") -> "ResonanceReport":
+        """Add a list item."""
+        self._current.append(f"    {marker} {text}")
+        return self
+
+    def line(self, text: str) -> "ResonanceReport":
+        """Add a raw indented line."""
+        self._current.append(f"    {text}")
+        return self
+
+    def blank(self) -> "ResonanceReport":
+        """Add a blank line."""
+        self._current.append("")
+        return self
+
+    def render(self) -> str:
+        """Render the complete report as a string."""
+        # Flush last section
+        if self._current_name or self._current:
+            self._sections.append((self._current_name, self._current))
+
+        parts = [resonance_header(self._title, self._subtitle)]
+
+        for name, lines in self._sections:
+            parts.append("")
+            if name:
+                parts.append(f"  {name}:")
+            for line in lines:
+                parts.append(line)
+
+        parts.append(resonance_footer())
+        return "\n".join(parts)
