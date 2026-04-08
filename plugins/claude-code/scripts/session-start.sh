@@ -221,4 +221,30 @@ if [ -f "$ORCHESTRA_PROBE" ]; then
   fi
 fi
 
+# ── Phase 5: Circuit Monitor (background) ─────────────────────────────────
+# Polls circuitd every 30s and writes alerts to ~/.seif/circuit/alerts.txt.
+# The AI can check this file when needed for mid-session circuit visibility.
+
+CIRCUIT_MONITOR="$SCRIPT_DIR/circuit-monitor.py"
+
+if [ -f "$CIRCUIT_MONITOR" ]; then
+  # Clear stale alerts from previous session
+  python3 "$CIRCUIT_MONITOR" --clear-alerts 2>/dev/null
+
+  # Initial state capture (seed the monitor-state.json)
+  python3 "$CIRCUIT_MONITOR" --quiet 2>/dev/null
+
+  # Start background monitor loop (30s interval, killed when shell exits)
+  nohup bash -c "while true; do python3 \"$CIRCUIT_MONITOR\" --quiet 2>/dev/null; sleep 30; done" &>/dev/null &
+  MONITOR_PID=$!
+
+  # Save PID so session-end can kill it
+  echo "$MONITOR_PID" > "$HOME/.seif/circuit/monitor.pid"
+
+  echo "[CIRCUIT MONITOR] Background monitor started (PID $MONITOR_PID, 30s interval)"
+  echo "  Alerts file: ~/.seif/circuit/alerts.txt"
+  echo "  Check: python3 $CIRCUIT_MONITOR --status"
+  echo ""
+fi
+
 exit 0

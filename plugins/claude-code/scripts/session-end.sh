@@ -169,4 +169,14 @@ if [ -d "$SEIF_DIR/.git" ]; then
   fi
 fi
 
+# ── Kill background circuit monitor ──────────────────────────────────────
+MONITOR_PID_FILE="$HOME/.seif/circuit/monitor.pid"
+if [ -f "$MONITOR_PID_FILE" ]; then
+  MONITOR_PID=$(cat "$MONITOR_PID_FILE" 2>/dev/null)
+  if [ -n "$MONITOR_PID" ]; then
+    kill "$MONITOR_PID" 2>/dev/null || true
+  fi
+  rm -f "$MONITOR_PID_FILE"
+fi
+
 exit 0
