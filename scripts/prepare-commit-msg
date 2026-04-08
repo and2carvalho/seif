@@ -1,0 +1,89 @@
+#!/bin/bash
+# SEIF prepare-commit-msg hook
+# Injects SEIF-Kernel and SEIF-Writer trailers into commits
+# when a valid writer.lock exists and RESONANCE.json is accessible.
+#
+# Install: cp scripts/prepare-commit-msg .git/hooks/prepare-commit-msg
+# Or:      ln -sf ../../scripts/prepare-commit-msg .git/hooks/prepare-commit-msg
+
+COMMIT_MSG_FILE="$1"
+COMMIT_SOURCE="$2"
+
+# Skip for merge/squash/amend
+if [ "$COMMIT_SOURCE" = "merge" ] || [ "$COMMIT_SOURCE" = "squash" ]; then
+    exit 0
+fi
+
+# Find SEIF context repo
+SEIF_HOME="${SEIF_HOME:-$HOME/seif-admin/.seif}"
+if [ ! -d "$SEIF_HOME" ]; then
+    SEIF_HOME="${HOME}/.seif"
+fi
+
+# Check RESONANCE.json for kernel hash
+RESONANCE=""
+for candidate in \
+    "$(git rev-parse --show-toplevel)/RESONANCE.json" \
+    "$SEIF_HOME/RESONANCE.json" \
+    "$(git rev-parse --show-toplevel)/src/seif/data/RESONANCE.json"; do
+    if [ -f "$candidate" ]; then
+        RESONANCE="$candidate"
+        break
+    fi
+done
+
+if [ -z "$RESONANCE" ]; then
+    # No kernel found — commit proceeds without trailers
+    exit 0
+fi
+
+# Extract integrity_hash from RESONANCE.json
+KERNEL_HASH=$(python3 -c "
+import json, sys
+try:
+    d = json.load(open('$RESONANCE'))
+    print(d.get('validation', {}).get('integrity_hash', ''))
+except:
+    pass
+" 2>/dev/null)
+
+if [ -z "$KERNEL_HASH" ]; then
+    exit 0
+fi
+
+# Check writer.lock
+WRITER_MODEL=""
+WRITER_MACHINE=""
+WRITER_LOCK="$SEIF_HOME/writer.lock"
+if [ -f "$WRITER_LOCK" ]; then
+    WRITER_MODEL=$(python3 -c "
+import json
+try:
+    d = json.load(open('$WRITER_LOCK'))
+    print(d.get('model', ''))
+except:
+    pass
+" 2>/dev/null)
+    WRITER_MACHINE=$(python3 -c "
+import json
+try:
+    d = json.load(open('$WRITER_LOCK'))
+    print(d.get('machine_id', ''))
+except:
+    pass
+" 2>/dev/null)
+fi
+
+# Don't add trailers if they already exist
+if grep -q "SEIF-Kernel:" "$COMMIT_MSG_FILE" 2>/dev/null; then
+    exit 0
+fi
+
+# Append trailers
+echo "" >> "$COMMIT_MSG_FILE"
+echo "SEIF-Kernel: $KERNEL_HASH" >> "$COMMIT_MSG_FILE"
+if [ -n "$WRITER_MODEL" ]; then
+    echo "SEIF-Writer: $WRITER_MODEL@$WRITER_MACHINE" >> "$COMMIT_MSG_FILE"
+fi
+
+exit 0
