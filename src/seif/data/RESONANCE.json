@@ -545,10 +545,10 @@
         },
         {
           "id": "hash_integrity",
-          "assertion": "Loaded .seif files have valid integrity_hash (SHA-256 of summary field, first 16 hex chars).",
+          "assertion": "Two hash layers: (1) RESONANCE.json validation_hash = SHA-256 of 6 critical mathematical constants (zeta, phi_inverse, fundamental_tesla, fundamental_giza, spiral_angle_deg, omega_n), pipe-delimited with 10 decimal precision, first 24 hex chars; (2) module integrity_hash = SHA-256 of sorted JSON stringify of all fields excluding integrity_hash, first 24 hex chars.",
           "metric": "hash_valid_ratio",
           "threshold": 0.95,
-          "how_to_measure": "For each loaded module, compute SHA-256[:16] of summary. hash_valid_ratio = valid_count / total_count."
+          "how_to_measure": "For RESONANCE validation_hash: concatenate 6 constants with pipe delimiter at 10 decimal places, SHA-256[:24]. For module integrity_hash: JSON.stringify(sorted fields excluding integrity_hash), SHA-256[:24]. hash_valid_ratio = valid_count / total_count."
         },
         {
           "id": "quality_measurement",
