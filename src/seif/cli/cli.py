@@ -19,13 +19,18 @@ from seif.core.fingerprint import calculate_fingerprint, verify_fingerprint
 
 def _lazy_import_generators():
     """Lazy import generators — only needed for research/visualization commands."""
-    from seif.analysis.transcompiler import transcompile, describe
-    from seif.generators.glyph_renderer import render, render_fractal_qr
-    from seif.generators.harmonic_audio import render_audio
-    from seif.generators.fractal_qrcode import generate_fractal_qr, describe as describe_fqr
-    from seif.generators.circuit_generator import generate_from_spec, render_svg
-    from seif.generators.composite_renderer import render_composite
-    return transcompile, describe, render, render_fractal_qr, render_audio, generate_fractal_qr, describe_fqr, generate_from_spec, render_svg, render_composite
+    try:
+        from seif.analysis.transcompiler import transcompile, describe
+        from seif.generators.glyph_renderer import render, render_fractal_qr
+        from seif.generators.harmonic_audio import render_audio
+        from seif.generators.fractal_qrcode import generate_fractal_qr, describe as describe_fqr
+        from seif.generators.circuit_generator import generate_from_spec, render_svg
+        from seif.generators.composite_renderer import render_composite
+        return transcompile, describe, render, render_fractal_qr, render_audio, generate_fractal_qr, describe_fqr, generate_from_spec, render_svg, render_composite
+    except ImportError as e:
+        print(f"Generators not available: {e}")
+        print("Install with: pip install seif-cli[generators]")
+        raise SystemExit(1)
 
 
 def _lazy_import_encoding():
@@ -1057,7 +1062,7 @@ def cmd_evolve():
     new_kernel = {
         "version": "3.3.2",  # Evolved
         "axioms": 20,  # Increased
-        "zeta_optimal": 0.618034,  # Closer to φ
+        "zeta_optimal": 0.612372,  # √6/4 — from H(s) = 9/(s²+3s+6)
     }
 
     print("═══ SEIF OS EVOLUTION ═══")
@@ -2091,7 +2096,11 @@ def cmd_watermark_embed(text: str, input_wav: str, output_wav: str,
                         repetitions: int, symbol_duration: float,
                         amplitude: float):
     """Embed text as infrasound watermark in a WAV file."""
-    from seif.generators.watermark import WatermarkConfig, embed_watermark_wav
+    try:
+        from seif.generators.watermark import WatermarkConfig, embed_watermark_wav
+    except ImportError:
+        print("Watermark module not available. Install with: pip install seif-cli[generators]")
+        return
 
     config = WatermarkConfig(
         repetitions=repetitions,
@@ -2113,7 +2122,11 @@ def cmd_watermark_embed(text: str, input_wav: str, output_wav: str,
 def cmd_watermark_extract(input_wav: str, n_symbols: int,
                           repetitions: int, symbol_duration: float):
     """Extract infrasound watermark from a WAV file."""
-    from seif.generators.watermark import WatermarkConfig, extract_watermark_wav
+    try:
+        from seif.generators.watermark import WatermarkConfig, extract_watermark_wav
+    except ImportError:
+        print("Watermark module not available. Install with: pip install seif-cli[generators]")
+        return
 
     config = WatermarkConfig(
         repetitions=repetitions,
@@ -2136,7 +2149,11 @@ def cmd_streaming_start(
     identity_file: str
 ):
     """Start a streaming watermark session."""
-    from seif.generators.streaming_watermark import StreamingWatermarker
+    try:
+        from seif.generators.streaming_watermark import StreamingWatermarker
+    except ImportError:
+        print("Streaming watermark module not available. Install with: pip install seif-cli[generators]")
+        return
     try:
         from seif.identity_block import parse_identity_block
     except ImportError:
@@ -2173,7 +2190,11 @@ def cmd_streaming_start(
 
 def cmd_streaming_status(session_id: str):
     """Show status of a streaming session."""
-    from seif.generators.streaming_watermark import StreamingWatermarker, STREAMING_DIR
+    try:
+        from seif.generators.streaming_watermark import StreamingWatermarker, STREAMING_DIR
+    except ImportError:
+        print("Streaming watermark module not available. Install with: pip install seif-cli[generators]")
+        return
 
     if not session_id:
         print("Error: --streaming-session required")
@@ -2200,7 +2221,11 @@ def cmd_streaming_status(session_id: str):
 
 def cmd_streaming_list():
     """List all active streaming sessions."""
-    from seif.generators.streaming_watermark import StreamingWatermarker
+    try:
+        from seif.generators.streaming_watermark import StreamingWatermarker
+    except ImportError:
+        print("Streaming watermark module not available. Install with: pip install seif-cli[generators]")
+        return
 
     sessions = StreamingWatermarker.list_sessions()
 
@@ -2219,7 +2244,11 @@ def cmd_streaming_list():
 
 def cmd_streaming_stop(session_id: str):
     """Stop/end a streaming session."""
-    from seif.generators.streaming_watermark import StreamingWatermarker
+    try:
+        from seif.generators.streaming_watermark import StreamingWatermarker
+    except ImportError:
+        print("Streaming watermark module not available. Install with: pip install seif-cli[generators]")
+        return
 
     if not session_id:
         print("Error: --streaming-session required")
