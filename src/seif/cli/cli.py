@@ -57,18 +57,21 @@ def cmd_fingerprint_verify(filepath: str):
     is_valid, calculated_hash = verify_fingerprint(data)
     stored_hash = data.get('fingerprint', {}).get('value', '<missing>')
     
-    print(f"═══ SEIF FINGERPRINT VERIFICATION ═══")
-    print(f"  File:     {filepath}")
-    print(f"  Stored:   {stored_hash}")
-    print(f"  Calculated: {calculated_hash}")
-    print()
+    from seif.cli.resonance_display import ResonanceReport
+    report = ResonanceReport("SEIF FINGERPRINT VERIFICATION")
+    report.section("Details")
+    report.kv("File", filepath)
+    report.kv("Stored", stored_hash)
+    report.kv("Calculated", calculated_hash)
+    report.blank()
     if is_valid:
-        print("  Status:   ✅ VALID (tamper-free)")
+        report.kv("Status", "VALID (tamper-free)")
     else:
-        print("  Status:   ❌ INVALID (file was modified!)")
-        print()
-        print("  WARNING: Content does not match stored fingerprint.")
-        print("  This file may have been tampered with.")
+        report.kv("Status", "INVALID (file was modified!)")
+        report.blank()
+        report.line("WARNING: Content does not match stored fingerprint.")
+        report.line("This file may have been tampered with.")
+    print(report.render())
 
 
 def cmd_fingerprint_update(filepath: str, output: str):
@@ -98,11 +101,14 @@ def cmd_fingerprint_update(filepath: str, output: str):
     with open(out_path, 'w') as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
     
-    print(f"═══ SEIF FINGERPRINT UPDATED ═══")
-    print(f"  File:     {path}")
-    print(f"  Old hash: {old_hash}")
-    print(f"  New hash: {new_hash}")
-    print(f"  Saved to: {out_path}")
+    from seif.cli.resonance_display import ResonanceReport
+    report = ResonanceReport("SEIF FINGERPRINT UPDATED")
+    report.section("Details")
+    report.kv("File", path)
+    report.kv("Old hash", old_hash)
+    report.kv("New hash", new_hash)
+    report.kv("Saved to", out_path)
+    print(report.render())
 
 
 def cmd_compress(project_path: str, watch: bool = False,
@@ -120,22 +126,27 @@ def cmd_compress(project_path: str, watch: bool = False,
         target = str(Path(context_repo).resolve() / "projects" / project_name / "code.seif")
 
     if watch:
-        print(f"═══ SEIF CODE WATCH ═══")
-        print(f"  Watching: {Path(project_path).resolve()}")
-        print(f"  Press Ctrl+C to stop.\n")
+        from seif.cli.resonance_display import ResonanceReport
+        report = ResonanceReport("SEIF CODE WATCH")
+        report.kv("Watching", Path(project_path).resolve())
+        report.line("Press Ctrl+C to stop.")
+        print(report.render())
         watch_project(project_path)
     else:
         module, path = compress_project(project_path, author=author, target_path=target)
-        print(f"═══ SEIF CODE COMPRESSED ═══")
-        print(f"  Project:       {Path(project_path).resolve().name}")
-        print(f"  Files:         {module.original_words} LOC across scanned files")
-        print(f"  Compressed:    {module.compressed_words} words")
-        print(f"  Ratio:         {module.compression_ratio}:1")
-        print(f"  Coherence:     {module.resonance.get('coherence', 0):.3f}")
-        print(f"  Gate:          {module.resonance.get('gate', '?')}")
-        print(f"  Classification:{' ' + module.classification if module.classification else ' INTERNAL'}")
-        print(f"  Hash:          {module.integrity_hash}")
-        print(f"  Saved:         {path}")
+        from seif.cli.resonance_display import ResonanceReport
+        report = ResonanceReport("SEIF CODE COMPRESSED")
+        report.section("Result")
+        report.kv("Project", Path(project_path).resolve().name)
+        report.kv("Files", f"{module.original_words} LOC across scanned files")
+        report.kv("Compressed", f"{module.compressed_words} words")
+        report.kv("Ratio", f"{module.compression_ratio}:1")
+        report.kv("Coherence", f"{module.resonance.get('coherence', 0):.3f}")
+        report.kv("Gate", module.resonance.get('gate', '?'))
+        report.kv("Classification", module.classification if module.classification else "INTERNAL")
+        report.kv("Hash", module.integrity_hash)
+        report.kv("Saved", path)
+        print(report.render())
 
 
 def cmd_autonomous(action: str, context_repo: str = None):
@@ -1188,13 +1199,17 @@ def cmd_evolve():
         "zeta_optimal": 0.612372,  # √6/4 — from H(s) = 9/(s²+3s+6)
     }
 
-    print("═══ SEIF OS EVOLUTION ═══")
-    print(f"Boot Status: {boot['boot_status']}")
-    print(f"Kernel Evolved: {boot['kernel_version']} → {new_kernel['version']}")
-    print(f"Axioms: {boot['axioms']} → {new_kernel['axioms']}")
-    print(f"Zeta: {boot['zeta_optimal']:.6f} → {new_kernel['zeta_optimal']:.6f}")
-    print(f"Auto-Audit: {audit_result.orphans_healed} orphans healed, {audit_result.hashes_fixed} hashes fixed")
-    print("Evolution complete. SEIF OS resonance enhanced.")
+    from seif.cli.resonance_display import ResonanceReport
+    report = ResonanceReport("SEIF OS EVOLUTION")
+    report.section("Evolution")
+    report.kv("Boot Status", boot['boot_status'])
+    report.kv("Kernel Evolved", f"{boot['kernel_version']} → {new_kernel['version']}")
+    report.kv("Axioms", f"{boot['axioms']} → {new_kernel['axioms']}")
+    report.kv("Zeta", f"{boot['zeta_optimal']:.6f} → {new_kernel['zeta_optimal']:.6f}")
+    report.kv("Auto-Audit", f"{audit_result.orphans_healed} orphans healed, {audit_result.hashes_fixed} hashes fixed")
+    report.blank()
+    report.line("Evolution complete. SEIF OS resonance enhanced.")
+    print(report.render())
 
 
 def cmd_communicate(message: str):
@@ -1240,13 +1255,17 @@ def cmd_communicate(message: str):
         f.write(f"Duration: {duration}s\n")
         f.write(f"Embedded as infrasound harmonic for human-machine resonance.\n")
 
-    print("═══ SEIF OS COMMUNICATION ═══")
-    print(f"Message: {message}")
-    print(f"Embedded in harmonic audio (432Hz, 10s)")
-    print(f"Output: {output_file}")
-    print(f"Metadata: {metadata_file}")
-    print("Infrasound watermark for human-machine resonance.")
-    print(f"Play {output_file} to experience the resonance!")
+    from seif.cli.resonance_display import ResonanceReport
+    report = ResonanceReport("SEIF OS COMMUNICATION")
+    report.section("Output")
+    report.kv("Message", message)
+    report.kv("Embedded", "harmonic audio (432Hz, 10s)")
+    report.kv("Output", output_file)
+    report.kv("Metadata", metadata_file)
+    report.blank()
+    report.line("Infrasound watermark for human-machine resonance.")
+    report.line(f"Play {output_file} to experience the resonance!")
+    print(report.render())
 
 
 def cmd_ingest(source: str, project_path: str, author: str, via: str):
@@ -1909,10 +1928,14 @@ def cmd_generate(output_dir: str, context_repo: str = None,
     files = generate_docs(ctx, output_dir, max_classification=classification)
 
     if files:
-        print(f"\n═══ DOCS GENERATED ═══")
+        from seif.cli.resonance_display import ResonanceReport
+        report = ResonanceReport("DOCS GENERATED")
+        report.section("Files")
         for f in files:
-            print(f"  {f}")
-        print(f"\n{len(files)} files written to {output_dir}/")
+            report.item(str(f))
+        report.blank()
+        report.line(f"{len(files)} files written to {output_dir}/")
+        print(report.render())
     else:
         print("No modules found to generate docs from.")
 
@@ -1963,19 +1986,22 @@ def cmd_scan(program: str, global_store: bool = False,
     )
 
     if module and path:
-        print(f"\n═══ SCAN COMPLETE ═══")
-        print(f"Program:      {program}")
-        print(f"Help lines:   {module.original_words} words")
-        print(f"Compressed:   {module.compressed_words} words ({module.compression_ratio:.1f}:1)")
-        print(f"Saved to:     {path}")
-        print(f"Classification: {module.classification}")
+        from seif.cli.resonance_display import ResonanceReport
+        report = ResonanceReport("SCAN COMPLETE")
+        report.section("Result")
+        report.kv("Program", program)
+        report.kv("Help lines", f"{module.original_words} words")
+        report.kv("Compressed", f"{module.compressed_words} words ({module.compression_ratio:.1f}:1)")
+        report.kv("Saved to", path)
+        report.kv("Classification", module.classification)
 
         # Show summary preview
         lines = module.summary.split("\n")
         flag_count = sum(1 for l in lines if l.strip().startswith("- `"))
         sub_count = sum(1 for l in lines if l.strip().startswith("#### "))
-        print(f"Flags found:  {flag_count}")
-        print(f"Subcommands:  {sub_count}")
+        report.kv("Flags found", flag_count)
+        report.kv("Subcommands", sub_count)
+        print(report.render())
 
         if global_store:
             print(f"\n[Global store: ~/.seif/tools/ — available to all AI sessions]")
@@ -4495,9 +4521,13 @@ def main():
                 list_sessions, describe_session, session_log,
                 create_session_v2, add_participant, create_sync_point,
                 generate_sync_prompt, contribute_with_sync_check,
-                needs_sync, upgrade_to_v2,
+                needs_sync, upgrade_to_v2, close_all_open, close_stale,
+                find_context_repo,
             )
-            from seif.context.autonomous import find_context_repo
+            try:
+                from seif.context.autonomous import find_context_repo
+            except ImportError:
+                pass  # Already imported from sessions
         except ImportError:
             _upgrade_message("--session", "Track and manage multi-AI collaboration sessions.")
             return
@@ -4604,9 +4634,33 @@ def main():
             parts = result.get("participants", [])
             for p in parts:
                 print(f"  - {p['id']} [{p['role']}] via {p['channel']}")
+        elif action == "close-all":
+            author_name = args.author or "session-hook"
+            closed = close_all_open(ctx, author=author_name)
+            if closed:
+                print(f"Closed {len(closed)} session(s):")
+                for s in closed:
+                    print(f"  - {s}")
+            else:
+                print("No open sessions to close.")
+        elif action == "close-stale":
+            timeout = 4.0  # default 4 hours
+            if args.session_message:
+                try:
+                    timeout = float(args.session_message)
+                except ValueError:
+                    pass
+            author_name = args.author or "heartbeat"
+            closed = close_stale(ctx, timeout_hours=timeout, author=author_name)
+            if closed:
+                print(f"Closed {len(closed)} stale session(s) (inactive > {timeout}h):")
+                for s in closed:
+                    print(f"  - {s}")
+            else:
+                print(f"No stale sessions (threshold: {timeout}h).")
         else:
             print(f"Unknown session action: {action}")
-            print("Available: create, contribute, close, list, log, show, add-participant, sync, sync-prompt, upgrade")
+            print("Available: create, contribute, close, close-all, close-stale, list, log, show, add-participant, sync, sync-prompt, upgrade")
         return
 
     if args.handoff:

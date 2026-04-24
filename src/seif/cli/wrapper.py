@@ -65,6 +65,56 @@ def _build_global_prompt() -> str:
         return "S.E.I.F. protocol active."
 
 
+def _build_session_lifecycle_prompt(seif_dir: Path) -> str:
+    """Build session lifecycle instructions when .seif/ exists.
+
+    This is injected into the AI context so ANY backend (Claude, Gemini, etc.)
+    knows how to manage SEIF sessions. The instructions are part of the
+    protocol, not tied to any specific AI client.
+    """
+    # Check for open sessions
+    sessions_dir = seif_dir / "sessions"
+    open_sessions = []
+    if sessions_dir.is_dir():
+        import json as _json
+        for f in sessions_dir.glob("*.seif"):
+            try:
+                data = _json.loads(f.read_text(encoding="utf-8"))
+                if data.get("status") == "OPEN":
+                    open_sessions.append(data.get("name", f.stem))
+            except Exception:
+                pass
+
+    lines = [
+        "[SEIF SESSION LIFECYCLE]",
+        "This workspace has .seif/ — session management is active.",
+        "",
+        "## Writer obligations",
+        "1. SESSION START: If no open session exists, create one:",
+        '   seif --session create --session-name <YYYY-MM-DD-topic> --author <model> --session-message "<purpose>"',
+        "2. DURING: Contribute at milestones (decisions, deliverables, bugs, insights):",
+        '   seif --session contribute --session-name <name> --author <model> --session-message "<observation>"',
+        "3. SESSION END: Before conversation ends, close the session:",
+        "   seif --session close --session-name <name> --author <model>",
+        "   This persists to .seif/modules/owner-session-history.seif automatically.",
+        "",
+        "## Rules",
+        "- Session name format: YYYY-MM-DD-<short-topic>",
+        "- Only contribute significant events, not every tool call",
+        "- The human should never need to manage sessions manually",
+    ]
+
+    if open_sessions:
+        lines.append(f"")
+        lines.append(f"## Open sessions: {', '.join(open_sessions)}")
+        lines.append(f"Resume contributing to the open session instead of creating a new one.")
+    else:
+        lines.append(f"")
+        lines.append(f"## No open sessions — create one at the start of this conversation.")
+
+    return "\n".join(lines)
+
+
 def _build_local_prompt() -> str:
     """Layer 2: Local context (RESONANCE.json or .seif/ in cwd)."""
     cwd = Path.cwd()
@@ -101,6 +151,9 @@ def _build_local_prompt() -> str:
                     parts.append("\n---\n".join(modules))
             except Exception:
                 pass
+
+        # Inject session lifecycle instructions
+        parts.append(_build_session_lifecycle_prompt(seif_dir))
 
     if parts:
         return "\n\n".join(parts)
