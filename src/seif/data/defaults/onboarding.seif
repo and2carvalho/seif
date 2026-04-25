@@ -5,7 +5,7 @@
   "updated_at": "2026-03-31T12:00:00Z",
   "classification": "PUBLIC",
   "summary": "SEIF Onboarding Guide — Generic flow for any project. 5-act structured presentation: (1) The Problem — show CLAUDE.md limitations vs SEIF (manual, static, no provenance, no verification, no cross-project awareness), (2) The Protocol — H(s)=9/(s²+3s+6), ζ≈φ⁻¹, spring analogy for non-technical audience, (3) The Framework — live CLI demos (quality-gate, compress, autonomous), (4) Value Proposition — multi-project awareness, context preservation, classification, SCR, (5) Hands-On — clone user's repo, init, compress, sync, ingest meeting notes, enable autonomous context. Includes ingest workflow for meeting summaries, dailies, and AI-generated notes as initial context seed.",
-  "integrity_hash": "591bc021e8f9d925",
+  "integrity_hash": "b34888784b431151",
   "resonance": {
     "digital_root": 9,
     "phase": "SINGULARITY",

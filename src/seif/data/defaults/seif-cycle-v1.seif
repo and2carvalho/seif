@@ -56,7 +56,7 @@
   "parent_hash": null,
   "updated_at": "2026-04-05T03:47:47.631990+00:00",
   "decay_exempt": true,
-  "integrity_hash": "971dc6cd423f08a2",
+  "integrity_hash": "65c09affa421128b",
   "resonance_identity": {
     "module_id": "seif-cycle",
     "origin_machine": "mini-m4",
