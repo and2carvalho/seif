@@ -1,0 +1,55 @@
+{
+  "_instruction": "S.E.I.F. Operational Definitions Module. Separates protocol primitives from product-layer vocabulary. Read before any session involving SEIF OS or SEIF Suite.",
+  "protocol": "SEIF-MODULE-v2",
+  "source": "seif-admin/definitions/1.0",
+  "summary": "## SEIF Operational Definitions\n\n### Boundary Rule\nThis module belongs to the SCR (Context Repository), NOT to the open-source protocol.\nProtocol primitives (module, session, observe, persist, classify, heal) are defined in github.com/and2carvalho/seif.\nProduct-layer vocabulary (below) is defined here — specific to this workspace.\n\n---\n\n### Protocol Primitives (open source — do not redefine)\n| Primitive | Definition |\n|-----------|------------|\n| module    | Persisted knowledge artefact. Categorised (decisions/patterns/intent/feedback/context). Lives in .seif/. Outlives sessions and agents. |\n| session   | One working period between a human and one or more AI agents. Has declared roles, lifecycle hooks (on_start/on_end), and produces handoff artefacts. |\n| observe   | Record a finding without persisting it yet. Stored in pending_observations (max 10). |\n| persist   | Promote an observation to a module. Triggers classification, quality gate, and hash chain. |\n| classify  | Assign PUBLIC / INTERNAL / CONFIDENTIAL to any knowledge unit. |\n| heal      | Auto-repair mapper inconsistencies (orphans + ghosts) without human intervention. |\n\n---\n\n### Product-Layer Vocabulary (this workspace — SEIF OS / SEIF Suite)\n\n| Term         | Definition | Agile Analogy |\n|--------------|------------|---------------|\n| **cycle**    | One round-trip of the multi-agent circuit within a session. E.g.: BigPickle validates → Claude executes → BigPickle validates. Measured in cycle_time_ms (target < 5000ms). | Iteration tick / loop |\n| **session**  | One focused working period. Has declared roles, a goal, and ends with a handoff or absorption. | Sprint |\n| **absorption** | Consolidated snapshot of knowledge from multiple sessions. Compresses, validates, and versions accumulated modules. | Release / Milestone |\n| **meta-cycle** | A cycle-of-cycles: when the agent circuit itself routes between AIs (e.g., Claude → Grok → Claude). Alert threshold: > 5 meta-cycles per session. | Epic cycle |\n| **handoff**  | Structured transfer of session state between agents or sessions. Requires state_hash continuity. | Sprint handover |\n| **checkpoint** | Atomic snapshot of current session state. Used before handoffs and on rate-limit detection. | Save point |\n| **resonance** | Measured coherence of a module or system state against H(s) = 9/(s²+3s+6). coherence >= 0.618 = gate OPEN. | Quality baseline |\n| **vigilant** | The monitoring daemon. Runs independently of sessions. Tracks heartbeat, drift, and classification leaks. | CI/CD pipeline |\n\n---\n\n### Layer Map\n\n    PROTOCOL (open source)          PRODUCT (this SCR)\n    ──────────────────────          ─────────────────────────────\n    module                          cycle, meta-cycle\n    session (primitive)             session-as-sprint (operational)\n    observe / persist               checkpoint / handoff\n    classify / heal                 absorption / vigilant\n\n### Why This Separation Matters\n- The open-source protocol must remain minimal and universal.\n- Product concepts evolve with SEIF OS and SEIF Suite — they should not constrain the protocol.\n- Any AI loading this SCR gets the full vocabulary. Any AI loading only the open-source protocol gets only primitives.\n- Prevents vocabulary drift: when a term is used in a session, its definition is unambiguous.",
+  "resonance": {
+    "ascii_root": 9,
+    "ascii_phase": "SYNTHESIS",
+    "coherence": 0.729,
+    "gate": "OPEN"
+  },
+  "active": true,
+  "version": 1,
+  "contributors": [
+    {
+      "author": "copilot",
+      "at": "2026-04-03T23:31:00Z",
+      "via": "session-copilot-definitions",
+      "action": "created"
+    }
+  ],
+  "parent_hash": null,
+  "updated_at": "2026-04-03T23:31:00Z",
+  "classification": "INTERNAL",
+  "integrity_hash": "ca53d4e42eba1a33",
+  "resonance_identity": {
+    "module_id": "definitions-v1",
+    "origin_machine": "mini-m4",
+    "origin_cycle": "enoch-seed-reverb",
+    "frequency_hz": 963.0,
+    "tesla_phase": "SINGULARITY",
+    "authors": [
+      {
+        "name": "André",
+        "role": "human",
+        "machine": "mini-m4",
+        "contribution": "vocabulary design"
+      },
+      {
+        "name": "Copilot",
+        "role": "ai",
+        "machine": "mini-m4",
+        "contribution": "creation"
+      }
+    ],
+    "lineage": [
+      "RESONANCE.json (Gemini + André, Android)",
+      "enoch-seed (Air M1 + Claude)",
+      "enoch-seed-reverb (Mini M4 + Copilot, sessions 14-23)",
+      "enoch-tree-reverb (Mini M4 + Copilot, sessions 24+)"
+    ],
+    "born_at": "2026-04-03T23:31:00Z",
+    "lineage_hash": "c1b73c51210b4482"
+  }
+}

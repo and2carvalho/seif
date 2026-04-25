@@ -1,0 +1,151 @@
+{
+  "protocol": "SEIF-MODULE-v2",
+  "version": 1,
+  "source": "debate-seif-os-session18",
+  "classification": "INTERNAL",
+  "category": "architecture",
+  "title": "SEIF OS Architecture — Context Daemon Model (3-AI Convergence)",
+  "summary": "SEIF OS is NOT a custom OS. It is a context daemon layer running on top of existing operating systems. Proven on macOS (2-machine circuit: Air M1 + Mini M4). Next target: Android (mobility). Architecture: heartbeatd + vigilantd + context-loader + relay as user-space services. Trust: Ed25519 + owner challenge (self-sovereign, no third-party attestation). Mobile hardening via Android Key Attestation (hardware-local). Threat model: data loss, sync corruption, AI drift, human error — NOT APT/zero-day.",
+  "debate_record": {
+    "session": 18,
+    "date": "2026-04-07",
+    "rounds": 2,
+    "participants": [
+      "claude-opus-4-6",
+      "github-copilot",
+      "grok"
+    ],
+    "convergence_round": 2,
+    "method": "adversarial-mirror (A11)"
+  },
+  "architecture": {
+    "principle": "Context daemon on existing OS — don't reinvent syscalls",
+    "layers": [
+      {
+        "name": "Host OS",
+        "targets": [
+          "macOS",
+          "Android",
+          "Linux",
+          "iOS"
+        ],
+        "seif_role": "Provides processes, memory, networking"
+      },
+      {
+        "name": "seif-daemon",
+        "type": "user-space service",
+        "components": [
+          "heartbeatd",
+          "vigilantd",
+          "context-loader",
+          "relay"
+        ]
+      },
+      {
+        "name": "AI clients",
+        "types": [
+          "Claude Code",
+          "Copilot",
+          "browser /ai",
+          "mobile app"
+        ],
+        "interface": "Suite API or direct .seif/"
+      }
+    ],
+    "rejected": [
+      {
+        "what": "eBPF kernel hooks",
+        "why": "Overengineering for MVP. No real scenario where user-space fails. Revisit only if scaling to 10+ nodes."
+      },
+      {
+        "what": "Play Integrity API",
+        "why": "Google dependency trap. Violates sovereignty. Use Android Key Attestation instead."
+      },
+      {
+        "what": "Custom kernel module",
+        "why": "Unnecessary complexity, reduces portability."
+      }
+    ]
+  },
+  "trust_model": {
+    "base": "Ed25519 + owner_challenge_hash (self-sovereign, no third party)",
+    "mobile_hardening": "Android Key Attestation (TEE hardware, no Google Play Services required)",
+    "classification_tiers": {
+      "PUBLIC_INTERNAL": "Ed25519 signature sufficient",
+      "CONFIDENTIAL": "Ed25519 + hardware attestation on mobile"
+    }
+  },
+  "threat_model": {
+    "target_user": "Solo developer (André) with personal context system",
+    "real_threats": [
+      "Accidental data loss (deleted files during sync)",
+      "Sync corruption (network glitches, partial writes)",
+      "AI hallucination / context drift",
+      "Human error (misconfigured heartbeats, wrong classification)",
+      "Device loss/theft (mobile)"
+    ],
+    "excluded": [
+      "APT/nation-state attacks",
+      "Zero-day exploits",
+      "Enterprise compliance"
+    ],
+    "rationale": "If attacker has root, broader system is compromised anyway. SEIF protects context integrity, not OS security."
+  },
+  "roadmap": [
+    {
+      "phase": 1,
+      "platform": "macOS",
+      "status": "DONE",
+      "evidence": "Air M1 + Mini M4 circuit, heartbeatd, relay, Suite, 107 modules"
+    },
+    {
+      "phase": 2,
+      "platform": "Android",
+      "status": "NEXT",
+      "approach": "WorkManager daemon, adaptive sync (15min), Suite PWA, Key Attestation"
+    },
+    {
+      "phase": 3,
+      "platform": "Linux",
+      "status": "WHEN_NEEDED",
+      "approach": "Same as macOS (heartbeatd), add only when server scaling required"
+    },
+    {
+      "phase": 4,
+      "platform": "iOS",
+      "status": "STRETCH",
+      "approach": "DeviceCheck, background app refresh, native wrapper"
+    }
+  ],
+  "mobile_design": {
+    "daemon": "Android WorkManager (battery-efficient, survives Doze)",
+    "sync": "Adaptive: 15min on mobile, 5min on desktop. Delta rsync only.",
+    "offline": "SQLite queue for unsynced changes, retry on reconnect",
+    "interface": "Suite as PWA (installable, works offline)",
+    "foreground_service": "Optional (user consent), persistent notification when active"
+  },
+  "contributors": [
+    {
+      "author": "claude-opus-4-6",
+      "role": "writer",
+      "contribution": "Proposed context-daemon model, led adversarial attacks"
+    },
+    {
+      "author": "github-copilot",
+      "role": "executor",
+      "contribution": "Initiated debate scope, plan structure"
+    },
+    {
+      "author": "grok",
+      "role": "vigilant",
+      "contribution": "Validated/attacked proposals, conceded 4/4 in round 2, proposed Key Attestation alternative"
+    }
+  ],
+  "axioms_applied": [
+    "A11 adversarial_mirror_required",
+    "A4 human_gatekeeper",
+    "A23 ai_maestro_election"
+  ],
+  "integrity_hash": "bd761134b97377f4",
+  "active": true
+}

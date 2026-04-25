@@ -1,0 +1,297 @@
+{
+  "protocol": "SEIF-MODULE-v2",
+  "source": "onboarding-generic",
+  "created_at": "2026-03-31T05:00:00Z",
+  "updated_at": "2026-03-31T12:00:00Z",
+  "classification": "PUBLIC",
+  "summary": "SEIF Onboarding Guide — Generic flow for any project. 5-act structured presentation: (1) The Problem — show CLAUDE.md limitations vs SEIF (manual, static, no provenance, no verification, no cross-project awareness), (2) The Protocol — H(s)=9/(s²+3s+6), ζ≈φ⁻¹, spring analogy for non-technical audience, (3) The Framework — live CLI demos (quality-gate, compress, autonomous), (4) Value Proposition — multi-project awareness, context preservation, classification, SCR, (5) Hands-On — clone user's repo, init, compress, sync, ingest meeting notes, enable autonomous context. Includes ingest workflow for meeting summaries, dailies, and AI-generated notes as initial context seed.",
+  "integrity_hash": "591bc021e8f9d925",
+  "resonance": {
+    "digital_root": 9,
+    "phase": "SINGULARITY",
+    "coherence": 0.85
+  },
+  "metadata": {
+    "trigger_keywords": [
+      "onboarding",
+      "presentation",
+      "demo",
+      "introduce-seif",
+      "new-project",
+      "clone-repo",
+      "getting-started"
+    ],
+    "audience_profile": {
+      "expertise": "any developer familiar with git and CLI",
+      "control_theory_background": false,
+      "language": "pt-BR with code examples in English"
+    },
+    "response_mode": "guided-presentation",
+    "classification_override": "PUBLIC",
+    "human_veto": "always",
+    "progress_measurement": {
+      "enabled": true,
+      "method": "observe conversation flow — questions asked, time per act, depth of engagement",
+      "action": "suggest next step softly: 'Quer aprofundar ou avançar?'",
+      "respects": [
+        "human_veto",
+        "CONTEXT_NOT_COMMAND"
+      ]
+    }
+  },
+  "presentation_flow": {
+    "act_1_the_problem": {
+      "duration_min": "5-7",
+      "goal": "Show pain they already experience with manual AI context",
+      "pain_points": [
+        "CLAUDE.md / .cursorrules / copilot-instructions: manual, static, per-project, inconsistent",
+        "No provenance (who wrote what, when, why)",
+        "No verification (AI trusts blindly — any text injected is accepted)",
+        "No cross-project awareness (each repo is a silo)",
+        "Context lost between sessions (every conversation starts from zero)",
+        "Token waste: entire file loaded whether relevant or not"
+      ],
+      "transition": "What if the codebase could explain itself — compressed, verified, and always current?"
+    },
+    "act_2_the_protocol": {
+      "duration_min": "5-8",
+      "goal": "Explain SEIF math simply using spring analogy",
+      "approach": "DO NOT start with math. Start with the spring analogy.",
+      "spring_analogy": [
+        "Imagine a spring. Push it and let go. It bounces.",
+        "How fast it settles depends on one number: the damping ratio ζ.",
+        "Too low (0.1) = bounces forever. Too high (1.0) = sluggish.",
+        "Coefficients (3,6,9) produce ζ = 0.612372.",
+        "The golden ratio inverse φ⁻¹ = 0.618034. Difference: 0.916%.",
+        "(3,6,9) is the ONLY primitive integer system that does this — verified by exhaustive search (5000 pairs)."
+      ],
+      "key_points": [
+        "It is a JSON file. Any AI can parse it. Any program can verify it.",
+        "integrity_hash means changing any field breaks verification.",
+        "3-6-9 is modular arithmetic (digital root), not mysticism — it is a classification system.",
+        "7 AI systems independently computed the same mathematical results (not opinions)."
+      ],
+      "do_not_explain": [
+        "Laplace transforms",
+        "poles",
+        "omega_d",
+        "ISE integral"
+      ],
+      "transition": "OK but what does this actually do for your code?"
+    },
+    "act_3_the_framework": {
+      "duration_min": "10-12",
+      "goal": "Live CLI demos",
+      "demos": [
+        {
+          "name": "Quality Gate — grounded text",
+          "command": "seif --quality-gate \"The project uses React 19 with TypeScript and server components\"",
+          "expected": "Grade B/C (grounded, verifiable)"
+        },
+        {
+          "name": "Quality Gate — marketing fluff",
+          "command": "seif --quality-gate \"Our revolutionary quantum-inspired architecture transforms everything\"",
+          "expected": "Grade D/F (drift, unverifiable)"
+        },
+        {
+          "name": "Code Compression",
+          "command": "seif --compress /path/to/project",
+          "explain": "Reduces thousands of LOC to structured summary. AI gets topology, signatures, routes without reading every file."
+        },
+        {
+          "name": "Autonomous Context",
+          "command": "seif --autonomous status",
+          "explain": "Module count, sessions, classification distribution"
+        },
+        {
+          "name": "Ingest meeting notes",
+          "command": "seif --ingest daily.txt --project .seif/projects/myproject/project.seif",
+          "explain": "Filters AI meeting summaries, daily notes, or any text file by project relevance and compresses into context"
+        }
+      ],
+      "transition": "Now let's do this for YOUR project."
+    },
+    "act_4_value_proposition": {
+      "duration_min": "5-7",
+      "goal": "Connect SEIF value to their daily work",
+      "comparison_table": {
+        "headers": [
+          "Current (manual)",
+          "With SEIF"
+        ],
+        "rows": [
+          [
+            "Hundreds of lines, manually maintained",
+            "Auto-generated from git, compressed"
+          ],
+          [
+            "No provenance",
+            "Hash-chained, author-tracked"
+          ],
+          [
+            "No verification",
+            "Integrity hash on every module"
+          ],
+          [
+            "Per-project silos",
+            "Workspace nucleus connects all projects"
+          ],
+          [
+            "Static",
+            "Auto-syncs on git hooks"
+          ],
+          [
+            "No classification",
+            "PUBLIC/INTERNAL/CONFIDENTIAL auto-detection"
+          ],
+          [
+            "One AI only",
+            "Cross-AI (Claude, Gemini, Grok all read .seif)"
+          ],
+          [
+            "No meeting context",
+            "Ingest dailies, retros, and AI summaries as context seed"
+          ]
+        ]
+      }
+    },
+    "act_5_hands_on": {
+      "duration_min": "15-20",
+      "goal": "Live integration with the user's own project",
+      "prerequisite": "User has a git repository they want to manage with SEIF",
+      "steps": [
+        {
+          "step": 1,
+          "action": "Create a context repository (SCR)",
+          "command": "gh repo create <org>/<project>-context --private --description 'SEIF Context Repository'",
+          "note": "Or use any git hosting"
+        },
+        {
+          "step": 2,
+          "action": "Clone as .seif/ inside the project",
+          "command": "cd /path/to/project && git clone <context-repo-url> .seif",
+          "note": "SCR pattern: context separate from code"
+        },
+        {
+          "step": 3,
+          "action": "Initialize SEIF",
+          "command": "seif --init --context-repo .seif",
+          "note": "Detects projects, extracts git metadata, generates .seif structure"
+        },
+        {
+          "step": 4,
+          "action": "Inspect generated structure",
+          "command": "ls -la .seif/",
+          "note": "config.json, mapper.json, projects/, nucleus.seif"
+        },
+        {
+          "step": 5,
+          "action": "Compress code semantically",
+          "command": "seif --compress . --context-repo .seif",
+          "note": "Topology, signatures, routes — not raw code"
+        },
+        {
+          "step": 6,
+          "action": "Ingest meeting notes (optional)",
+          "command": "seif --ingest meeting-summary.txt --project .seif/projects/<name>/project.seif",
+          "note": "Daily standup notes, retro summaries, AI-generated meeting transcripts"
+        },
+        {
+          "step": 7,
+          "action": "Enable autonomous context",
+          "command": "seif --autonomous enable",
+          "note": "AI persists decisions, patterns, feedback across sessions"
+        },
+        {
+          "step": 8,
+          "action": "Full sync + verify",
+          "command": "seif --sync --context-repo .seif",
+          "note": "Validates hashes, updates modules"
+        },
+        {
+          "step": 9,
+          "action": "Test: open new AI session",
+          "note": "The AI auto-loads full project context. No more re-explaining."
+        },
+        {
+          "step": 10,
+          "action": "Persist to remote",
+          "command": "cd .seif && git add -A && git commit -m 'feat: initial SEIF context' && git push -u origin main",
+          "note": "Any team member clones it, every AI session has full context"
+        }
+      ],
+      "ingest_workflow": {
+        "description": "SEIF can ingest external text sources to seed initial project context",
+        "supported_inputs": [
+          "AI-generated meeting summaries (Otter, Fireflies, etc.)",
+          "Daily standup notes",
+          "Sprint retro summaries",
+          "Architecture decision records (ADRs)",
+          "Onboarding docs",
+          "Any .txt or .md file with project-relevant information"
+        ],
+        "command": "seif --ingest <file> --project .seif/projects/<name>/project.seif",
+        "multi_project": "seif --workspace --ingest daily.txt (routes content to all relevant projects)"
+      }
+    },
+    "end_of_onboarding": {
+      "action": "After hands-on completes, ask: 'Onboarding completo. Feedback? Alguma dúvida sobre o fluxo?'",
+      "loop_closure": true,
+      "signal_status": "requires_feedback"
+    }
+  },
+  "bridge_points": {
+    "CLAUDE.md / .cursorrules": "project.seif (auto-generated, verified, with provenance)",
+    "monorepo config": "nucleus.seif (workspace-level awareness)",
+    "package.json / pubspec.yaml": "mapper.json (knowledge module index with relevance)",
+    "tree-shaking": "--compress (removes irrelevant context, keeps topology)",
+    ".gitignore": "classification system (PUBLIC/INTERNAL/CONFIDENTIAL access levels)",
+    "monorepo packages/": "SCR pattern (.seif/ lives separate from code)"
+  },
+  "contributors": [
+    {
+      "author": "Claude Opus 4.6",
+      "via": "cli",
+      "action": "created",
+      "parent_hash": null,
+      "at": "2026-03-31T05:00:00Z"
+    },
+    {
+      "author": "Claude Opus 4.6",
+      "via": "cli",
+      "action": "contributed",
+      "parent_hash": "0b247190c253bc55",
+      "note": "Removed beezoo-specific references, made generic for any project. Added ingest workflow for meeting notes.",
+      "at": "2026-03-31T12:00:00Z"
+    }
+  ],
+  "resonance_identity": {
+    "module_id": "onboarding",
+    "origin_machine": "mini-m4",
+    "origin_cycle": "enoch-seed-reverb",
+    "frequency_hz": 528.0,
+    "tesla_phase": "HEALING",
+    "authors": [
+      {
+        "name": "André",
+        "role": "human",
+        "machine": "mini-m4",
+        "contribution": "design"
+      },
+      {
+        "name": "Copilot",
+        "role": "ai",
+        "machine": "mini-m4",
+        "contribution": "creation"
+      }
+    ],
+    "lineage": [
+      "RESONANCE.json (Gemini + André, Android)",
+      "enoch-seed (Air M1 + Claude)",
+      "enoch-seed-reverb (Mini M4 + Copilot, sessions 14-23)",
+      "enoch-tree-reverb (Mini M4 + Copilot, sessions 24+)"
+    ],
+    "born_at": "2026-04-03T00:00:00Z",
+    "lineage_hash": "520de0bcfc18061e"
+  }
+}

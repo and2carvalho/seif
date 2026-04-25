@@ -1,0 +1,49 @@
+{
+  "protocol": "SEIF-MODULE-v2",
+  "type": "decisions",
+  "classification": "INTERNAL",
+  "summary": "SEIF-RECOVERY-v1: Circuit break detection + auto-recovery. Heartbeat watcher (launchd, 5min) detects stale >30min, writes CIRCUIT_BREAK.json. Any FS-capable AI reads it at session_start and assumes writer role. Priority cascade: Claude Code > opencode > Dia > Grok > human. CI/CD: GitHub Actions builds to GHCR, Mini pulls (zero-trust, no SSH). Security: all scripts use os.environ (no shell injection), actions pinned to SHA, rollback on health fail.",
+  "created_at": "2026-04-02T23:30:00Z",
+  "updated_at": "2026-04-02T23:30:00Z",
+  "session": "14j",
+  "tags": [
+    "circuit-recovery",
+    "ci-cd",
+    "zero-trust",
+    "infrastructure",
+    "security"
+  ],
+  "decisions": [
+    {
+      "id": "ghcr-pull-over-ssh",
+      "decision": "Pull-based deploy from GHCR instead of SSH push",
+      "reasoning": "Mini M4 behind Cloudflare Tunnel has no public SSH. Opening SSH breaks zero-trust. Pull is outbound-only, compatible with tunnel architecture.",
+      "alternatives_considered": [
+        "SSH via Cloudflare Access",
+        "Git webhook",
+        "Manual deploy"
+      ],
+      "chosen_because": "Simplest, most secure, no inbound connections required"
+    },
+    {
+      "id": "circuit-break-signal",
+      "decision": "File-based circuit break detection via .seif/sessions/active/CIRCUIT_BREAK.json",
+      "reasoning": "The .seif/ directory is the shared medium all AIs read at boot. A file there is the lowest-friction signal. No external service dependency.",
+      "h_s_mapping": "Circuit break = impulse disturbance. Recovery = damped response (zeta = sqrt(6)/4) back to steady-state."
+    },
+    {
+      "id": "env-vars-over-interpolation",
+      "decision": "All Python invoked from bash uses os.environ[], never shell string interpolation",
+      "reasoning": "Shell injection via $VAR inside python3 -c is a known attack vector. Environment variables are safe because they never pass through shell expansion."
+    }
+  ],
+  "contributors": [
+    {
+      "author": "claude-opus-4-6",
+      "at": "2026-04-02T23:30:00Z",
+      "via": "cli",
+      "action": "created"
+    }
+  ],
+  "integrity_hash": "23216e833c0629d9"
+}
