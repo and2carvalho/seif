@@ -484,6 +484,11 @@
             "github-copilot (maestro, Mini M4)"
           ],
           "status": "active"
+        },
+        {
+          "id": "knowledge_session_separation",
+          "rule": "Modules hold what IS TRUE (persistent knowledge). Sessions hold what WAS DONE (units of work). Never store transient task state (TODOs, execution steps, pending status) as a module. The boundary test: if the content becomes obsolete when the task is completed, it belongs in a session.",
+          "origin": "Session 2026-04-25: André identified that a hostname-rename TODO with execution steps was incorrectly stored as an intent module. The module category was being used as a task tracker, polluting persistent knowledge with transient state. Claude corrected by splitting into session (work done) + module (dependency map knowledge)."
         }
       ]
     },
