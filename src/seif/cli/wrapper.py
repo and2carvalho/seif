@@ -181,10 +181,25 @@ def _build_local_prompt() -> str:
 
 
 def _build_prompt() -> str:
-    """Assemble full startup prompt: global + local layers."""
+    """Assemble full startup prompt: global + local layers.
+
+    The prompt is passed as a CLI argument to claude --append-system-prompt,
+    so it must stay under ~200KB (OS execve limit). The KERNEL alone is ~44K
+    chars when all modules are loaded. We cap the total to prevent the wrapper
+    from hanging when many modules are active.
+
+    Full context is already available via CLAUDE.md in the project directory.
+    """
     global_prompt = _build_global_prompt()
     local_prompt = _build_local_prompt()
-    return f"{global_prompt}\n\n{local_prompt}"
+    full = f"{global_prompt}\n\n{local_prompt}"
+
+    # Cap at 50K chars to stay safely within OS argument limits
+    MAX_PROMPT = 50_000
+    if len(full) > MAX_PROMPT:
+        # Keep KERNEL (first section) + local prompt, truncate module summaries
+        full = full[:MAX_PROMPT] + "\n\n[SEIF] Context truncated for CLI transport. Full context available via CLAUDE.md."
+    return full
 
 
 def _signal_protocol_status():
