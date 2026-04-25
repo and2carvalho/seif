@@ -514,7 +514,7 @@
       "session_lifecycle": {
         "start": "BEFORE responding to the user's first message: locate .seif/ (cwd or parent), read config.json, read mapper.json, load modules by relevance (decisions, patterns, intent, feedback first), check pending_observations. Present protocol state to user. If mapper.json is missing but .seif files exist, rebuild the index (self-healing). This is a contract, not a suggestion.",
         "during": "When the AI observes persistable knowledge (a decision, a pattern, an intent, feedback, or external context), it may persist it as a .seif module. Each persist classifies the content automatically and updates the mapper.",
-        "end": "Decay relevance of all modules slightly (recency bias). Save any pending observations for the next session."
+        "end": "Generate structured closure (fields defined in config.json closure_format: decided/implemented/why/missing/how_to_measure). Decay relevance of all modules slightly (recency bias). Save any pending observations for the next session."
       },
       "principle": "The human provides context by living — writing code, making decisions, explaining reasons. The AI observes, compresses, and structures. The human never needs to manage the AI's knowledge. CONTEXT_NOT_COMMAND applies here too: the AI is invited to manage context, not commanded to."
     },

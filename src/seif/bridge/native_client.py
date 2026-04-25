@@ -1,18 +1,21 @@
 """
-Native AI Client — Direct SDK integration replacing CLI wrapper.
+Native AI Client — Direct SDK integration with Claude CLI fallback.
 
 Supports streaming, multi-backend routing, and context injection from
-the personal nucleus. Falls back to CLI subprocess if SDK unavailable.
+the personal nucleus. When no ANTHROPIC_API_KEY is set, uses Claude CLI
+(compatible with Max Plan via OAuth).
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Iterator, Optional
 import os
+import shutil
+import subprocess
 
 
 @dataclass
 class ChatConfig:
-    backend: str = "auto"         # claude, gemini, local, auto
+    backend: str = "auto"         # claude, claude-cli, gemini, local, auto
     model: str = ""               # model override (empty = use default)
     stream: bool = True           # streaming responses
     quality_gate: bool = True     # measure every response
@@ -22,10 +25,15 @@ class ChatConfig:
 # Default models per backend
 _DEFAULT_MODELS = {
     "claude": "claude-sonnet-4-6",
+    "claude-cli": "claude-sonnet-4-6",
     "gemini": "gemini-2.5-flash",
     "grok": "grok-4-1-fast",
     "local": "llama3",
 }
+
+
+def _has_claude_cli() -> bool:
+    return shutil.which("claude") is not None
 
 
 class NativeClient:
@@ -48,8 +56,12 @@ class NativeClient:
         if profile_default and profile_default != "auto":
             return profile_default
 
+        # SDK requires API key with credits
         if os.environ.get("ANTHROPIC_API_KEY"):
             return "claude"
+        # No API key — prefer Claude CLI (Max Plan compatible)
+        if _has_claude_cli():
+            return "claude-cli"
         if os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY"):
             return "gemini"
         return "claude"
@@ -66,6 +78,8 @@ class NativeClient:
         """Send message and return complete response."""
         if self._backend == "claude":
             return self._send_claude(message, history or [], system)
+        elif self._backend == "claude-cli":
+            return self._send_claude_cli(message, history or [], system)
         elif self._backend == "gemini":
             return self._send_gemini(message, history or [], system)
         elif self._backend == "local":
@@ -75,11 +89,15 @@ class NativeClient:
 
     def stream(self, message: str, history: list[dict] = None,
                system: str = "") -> Iterator[str]:
-        """Stream response tokens. Falls back to send() if streaming unavailable."""
+        """Stream response tokens."""
         if self._backend == "claude":
             yield from self._stream_claude(message, history or [], system)
+        elif self._backend == "claude-cli":
+            yield from self._stream_claude_cli(message, history or [], system)
         else:
             yield self.send(message, history, system)
+
+    # -- Claude SDK ------------------------------------------------
 
     def _send_claude(self, message: str, history: list[dict],
                      system: str) -> str:
@@ -94,7 +112,7 @@ class NativeClient:
             )
             return response.content[0].text
         except ImportError:
-            return self._fallback_cli(message, system)
+            return self._send_claude_cli(message, history, system)
         except Exception as e:
             return f"Error: {e}"
 
@@ -112,9 +130,53 @@ class NativeClient:
                 for text in stream.text_stream:
                     yield text
         except ImportError:
-            yield self._fallback_cli(message, system)
+            yield from self._stream_claude_cli(message, history, system)
         except Exception as e:
             yield f"Error: {e}"
+
+    # -- Claude CLI (Max Plan) -------------------------------------
+
+    def _send_claude_cli(self, message: str, history: list[dict],
+                         system: str) -> str:
+        try:
+            cmd = ["claude", "--print", "--output-format", "text",
+                   "--no-session-persistence"]
+            if system:
+                cmd.extend(["--append-system-prompt", system])
+            cmd.append(message)
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            return result.stdout.strip() if result.returncode == 0 else f"CLI error: {result.stderr.strip()}"
+        except FileNotFoundError:
+            return "Claude CLI not found. Install: https://docs.anthropic.com/claude-code"
+        except subprocess.TimeoutExpired:
+            return "Claude CLI timeout (300s)."
+        except Exception as e:
+            return f"CLI error: {e}"
+
+    def _stream_claude_cli(self, message: str, history: list[dict],
+                           system: str) -> Iterator[str]:
+        """Stream from Claude CLI via subprocess pipe."""
+        try:
+            cmd = ["claude", "--print", "--output-format", "text",
+                   "--no-session-persistence"]
+            if system:
+                cmd.extend(["--append-system-prompt", system])
+            cmd.append(message)
+            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE, text=True)
+            for line in proc.stdout:
+                yield line
+            proc.wait()
+            if proc.returncode != 0:
+                err = proc.stderr.read().strip()
+                if err:
+                    yield f"\nCLI error: {err}"
+        except FileNotFoundError:
+            yield "Claude CLI not found. Install: https://docs.anthropic.com/claude-code"
+        except Exception as e:
+            yield f"CLI error: {e}"
+
+    # -- Gemini ----------------------------------------------------
 
     def _send_gemini(self, message: str, history: list[dict],
                      system: str) -> str:
@@ -134,10 +196,11 @@ class NativeClient:
         except Exception as e:
             return f"Gemini error: {e}"
 
+    # -- Local (Ollama) --------------------------------------------
+
     def _send_local(self, message: str, history: list[dict],
                     system: str) -> str:
         try:
-            import subprocess
             result = subprocess.run(
                 ["ollama", "run", self._model, message],
                 capture_output=True, text=True, timeout=120,
@@ -147,17 +210,3 @@ class NativeClient:
             return "Ollama not installed. https://ollama.ai"
         except Exception as e:
             return f"Local error: {e}"
-
-    def _fallback_cli(self, message: str, system: str) -> str:
-        """Fall back to Claude CLI subprocess."""
-        import subprocess
-        try:
-            cmd = ["claude", "--print", "--output-format", "text",
-                   "--no-session-persistence"]
-            if system:
-                cmd.extend(["--append-system-prompt", system])
-            cmd.append(message)
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
-            return result.stdout.strip() if result.returncode == 0 else f"CLI error: {result.stderr}"
-        except FileNotFoundError:
-            return "No AI backend available. Set ANTHROPIC_API_KEY or install claude CLI."
